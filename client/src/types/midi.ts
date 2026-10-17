@@ -182,6 +182,8 @@ export interface Settings {
   pinKeyboardExpanded: boolean;
   /** Keep the screen on while the practice page is visible */
   keepScreenAwake: boolean;
+  /** Show a draggable playback remote above the score */
+  showFloatingRemote: boolean;
   /** Play audio when hardware MIDI notes are played */
   playMidiInputAudio: boolean;
   /** Grace period in milliseconds for early note hits in wait mode */
@@ -208,6 +210,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fitKeyboardToSong: false,
   pinKeyboardExpanded: false,
   keepScreenAwake: true,
+  showFloatingRemote: true,
   playMidiInputAudio: true,
   waitModeGracePeriod: 400,
   showNotesOverlay: false,

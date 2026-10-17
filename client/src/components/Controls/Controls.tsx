@@ -21,6 +21,7 @@ import {
   Clock3,
 } from 'lucide-react';
 import { ScoreHistory } from '../ScoreHistory/ScoreHistory';
+import { FloatingPlaybackRemote } from '../FloatingPlaybackRemote/FloatingPlaybackRemote';
 import { ScoreSelector } from './ScoreSelector';
 import { usePlayback } from '../../hooks/usePlayback';
 import { useMidiFile } from '../../hooks/useMidiFile';
@@ -575,6 +576,20 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           <h2 id="practice-settings" className={styles.groupTitle}>
             {t('practiceSettings')}
           </h2>
+          <div className={styles.gridItem}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={settings.showFloatingRemote ?? true}
+                onChange={() =>
+                  updateSettings({
+                    showFloatingRemote: !(settings.showFloatingRemote ?? true),
+                  })
+                }
+              />
+              {t('showFloatingRemote')}
+            </label>
+          </div>
           <div className={styles.gridItem}>
             <label
               className={styles.checkboxLabel}
@@ -1131,6 +1146,12 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
       />
+      {currentFile && (settings.showFloatingRemote ?? true) && (
+        <FloatingPlaybackRemote
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+        />
+      )}
     </div>
   );
 }

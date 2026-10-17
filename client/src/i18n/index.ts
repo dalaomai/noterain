@@ -18,6 +18,11 @@ export const en = {
   historyStorageError: 'Could not access local history. Close other NoteRain tabs and try again.',
 
   // Playback
+  floatingRemote: 'Playback remote',
+  showFloatingRemote: 'Show floating playback remote',
+  moveFloatingRemote: 'Move playback remote: drag or use arrow keys',
+  startPlayback: 'Play',
+  pausePlayback: 'Pause',
   muteAudio: 'Mute audio',
   enableAudio: 'Enable audio',
   volume: 'Volume: {percent}%',
@@ -153,6 +158,11 @@ export const zh: Record<TranslationKeys, string> = {
   historyStorageError: '无法读取本地历史，请关闭其他 NoteRain 标签页后重试。',
 
   // Playback
+  floatingRemote: '悬浮小遥控',
+  showFloatingRemote: '显示悬浮小遥控',
+  moveFloatingRemote: '移动小遥控：拖动或使用方向键',
+  startPlayback: '播放',
+  pausePlayback: '暂停',
   muteAudio: '静音',
   enableAudio: '取消静音',
   volume: '音量：{percent}%',

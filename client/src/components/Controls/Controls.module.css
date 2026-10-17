@@ -144,6 +144,15 @@
   transform: translateX(0);
 }
 
+.feedbackOptions { margin:0 10px 4px 18px;padding:0 9px 8px;border:0;border-left:2px solid var(--border-color);min-width:0; }
+.feedbackOptions legend { padding:0 5px;margin-left:-5px;font-size:11px;line-height:1.8;color:var(--text-muted); }
+.feedbackOption { width:100%;min-height:38px;gap:7px!important; }
+.feedbackOption svg { width:42px;height:24px;margin-left:auto; }
+.feedbackOption:has(input:not(:checked)) svg { opacity:.25; }
+.pitchSample { color:#278474; }.adjustSample { color:#bd792e; }
+.feedbackOptions small { display:block;font-size:10px;line-height:1.6;color:var(--text-muted);margin-top:3px; }
+.feedbackOptions:disabled { opacity:.45; }
+
 .sidebarHeader {
   position: sticky;
   top: -12px;

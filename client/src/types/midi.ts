@@ -8,6 +8,8 @@ export interface MidiNote {
   duration: number;
   /** Velocity (0-127) */
   velocity: number;
+  /** Explicit authored MusicXML dynamics; null when no reliable target exists. */
+  referenceVelocity?: number | null;
   /** Track index this note belongs to */
   track: number;
   /** Channel (0-15) */
@@ -188,6 +190,10 @@ export interface Settings {
   playMidiInputAudio: boolean;
   /** Grace period in milliseconds for early note hits in wait mode */
   waitModeGracePeriod: number;
+  /** Independent in-score hints shared by all notation views. */
+  followPitchFeedback: boolean;
+  followTimingFeedback: boolean;
+  followVelocityFeedback: boolean;
   /** Show overlay with current notes and chord names */
   showNotesOverlay: boolean;
 }
@@ -213,6 +219,9 @@ export const DEFAULT_SETTINGS: Settings = {
   showFloatingRemote: true,
   playMidiInputAudio: true,
   waitModeGracePeriod: 400,
+  followPitchFeedback: true,
+  followTimingFeedback: true,
+  followVelocityFeedback: true,
   showNotesOverlay: false,
 };
 

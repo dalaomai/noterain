@@ -1,0 +1,476 @@
+{
+  "status": "passed",
+  "version": "V2.1 — three independent settings in existing drawer",
+  "date": "2026-10-17",
+  "prototype_url": "file:///home/dalaomai/code/noterain/design/follow-mode/index.html",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "method": "Installed Chrome headless CDP; pointer hit-tested controls; all 8 toggle combinations across 3 views; keyboard, refresh and layout checks",
+  "checks": [
+    {
+      "name": "首次打开三个反馈默认开启",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "入口复用现有设置栏且在跟弹模式下",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "设置开启不重排谱面和键盘",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "设置入口同步展开语义",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：音高正确与时间偏差分别着色",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 000",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 0",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 100",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 1",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 010",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 2",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 110",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 3",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 001",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 4",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 101",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 5",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 011",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 6",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：开关组合 111",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：组合不移动或重置当前音 7",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：关闭力度仍有独立错音红环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：关闭音高不会给错音制造时间或力度结果",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：关闭时间连同等待完成符号一起隐藏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：关闭力度隐藏不可评估提示",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：全部关闭时没有新增图形或播报",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：隐藏反馈期间仍正确匹配和弦，重开保留完成进度",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：音高正确与时间偏差分别着色",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 000",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 0",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 100",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 1",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 010",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 2",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 110",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 3",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 001",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 4",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 101",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 5",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 011",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 6",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：开关组合 111",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不移动或重置当前音 7",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：关闭力度仍有独立错音红环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：关闭音高不会给错音制造时间或力度结果",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：关闭时间连同等待完成符号一起隐藏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：关闭力度隐藏不可评估提示",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：全部关闭时没有新增图形或播报",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：隐藏反馈期间仍正确匹配和弦，重开保留完成进度",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：音高正确与时间偏差分别着色",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 000",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 0",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 100",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 1",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 010",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 2",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 110",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 3",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 001",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 4",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 101",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 5",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 011",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 6",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：开关组合 111",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不移动或重置当前音 7",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：关闭力度仍有独立错音红环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：关闭音高不会给错音制造时间或力度结果",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：关闭时间连同等待完成符号一起隐藏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：关闭力度隐藏不可评估提示",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：全部关闭时没有新增图形或播报",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：隐藏反馈期间仍正确匹配和弦，重开保留完成进度",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "关闭力度后的详情只含启用的音高与时间",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "全部关闭后自动收起已有详情",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "全部关闭后点击音符不会打开空详情",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "全部关闭时错音仍进入等待判定",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "全部关闭时正确输入仍完成判定",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：切换视图与重开设置均保留选择",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：切换视图与重开设置均保留选择",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：切换视图与重开设置均保留选择",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "关闭跟弹模式后反馈消失、子开关置灰并保留值",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "重新开启跟弹模式恢复原有偏好",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "刷新页面保留三个偏好",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "空格可切换聚焦的反馈开关",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "Esc 关闭并将焦点返回设置入口",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "桌面关闭设置后没有空间残留",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机三个开关均在可见抽屉范围",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机设置开启无横向溢出",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机可以实际点击关闭力度",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机点击遮罩收起设置，恢复完整谱面",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "所有设置交互无脚本异常",
+      "passed": true,
+      "observed": true
+    }
+  ],
+  "limitations": [
+    "状态原型，未连接正式 MIDI 判定或自由播放引擎"
+  ]
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Controls } from './components/Controls/Controls';
 import { FallingNotes } from './components/FallingNotes/FallingNotes';
+import { FollowFeedback } from './components/FollowFeedback/FollowFeedback';
 import { LoadingScreen } from './components/LoadingScreen/LoadingScreen';
 import { MusicXmlSheet } from './components/MusicXmlSheet/MusicXmlSheet';
 import { NotesOverlay } from './components/NotesOverlay/NotesOverlay';
@@ -73,10 +74,11 @@ function App() {
   const handleNoteOn = useCallback(
     async (noteNumber: number) => {
       if (isLoading) return; // Block input while loading
-      await resumeAudio();
-      noteOn(noteNumber, 64);
+      // Register before the audio promise: its latency is not playing error.
       setLiveNote(noteNumber, true);
       addSatisfiedWaitNote(noteNumber);
+      await resumeAudio();
+      noteOn(noteNumber, 64);
     },
     [noteOn, resumeAudio, setLiveNote, addSatisfiedWaitNote, isLoading]
   );
@@ -146,6 +148,7 @@ function App() {
           minNote={minNote}
           maxNote={maxNote}
         />
+        {currentFile && <FollowFeedback minNote={minNote} maxNote={maxNote} />}
         <PwaStatus />
       </div>
     </div>

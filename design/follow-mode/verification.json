@@ -1,0 +1,280 @@
+{
+  "status": "passed",
+  "version": "V2.1 — existing layout, shared in-score feedback and independent settings",
+  "date": "2026-10-17",
+  "prototype_url": "file:///home/dalaomai/code/noterain/design/follow-mode/index.html",
+  "baseline_url": "http://localhost:5173",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "method": "Installed Chrome, headless CDP, actual note bounding geometry and visible controls",
+  "checks": [
+    {
+      "name": "从现有页面保留工具栏、乐谱与底部键盘",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "没有新增常驻反馈侧栏或卡片",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：同一偏晚偏重反馈可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：共用完全相同的反馈图形结构",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：切换视图保留反馈场景",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：反馈限定在音符附近且不拦截乐谱交互",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：偏早左移、偏轻缩环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：错音不显示时间或力度评价",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：等待后完成使用相同中性暂停符号",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：无力度输入不显示实际力度环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：和弦只突出待补音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：重复已完成音不能代替缺失音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：按 G 补齐和弦",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：同一偏晚偏重反馈可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：共用完全相同的反馈图形结构",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：切换视图保留反馈场景",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：反馈限定在音符附近且不拦截乐谱交互",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：偏早左移、偏轻缩环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：错音不显示时间或力度评价",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：等待后完成使用相同中性暂停符号",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：无力度输入不显示实际力度环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：和弦只突出待补音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：重复已完成音不能代替缺失音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：按 G 补齐和弦",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：同一偏晚偏重反馈可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：共用完全相同的反馈图形结构",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：切换视图保留反馈场景",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：反馈限定在音符附近且不拦截乐谱交互",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：偏早左移、偏轻缩环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：错音不显示时间或力度评价",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：等待后完成使用相同中性暂停符号",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：无力度输入不显示实际力度环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：和弦只突出待补音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：重复已完成音不能代替缺失音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：按 G 补齐和弦",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "和弦补齐后的详情同步为 3/3",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "隐藏新增反馈不改变乐谱与键盘几何布局",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "对比只隐藏覆盖层",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "按需查看音符数值，无常驻详情栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "关闭详情恢复仅图形反馈",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "原谱反馈圆心与实际符头中心对齐",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "收起评审控件后恢复完整屏高",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：手机无整页横向溢出",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：手机仍无反馈侧栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：手机无整页横向溢出",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：手机仍无反馈侧栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：手机无整页横向溢出",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：手机仍无反馈侧栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机滚动后反馈仍跟随实际符头",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "减少动态效果保留静态环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "运行期间没有脚本异常",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "设计稿包含三视图统一规范与实际交付边界",
+      "passed": true,
+      "observed": true
+    }
+  ],
+  "limitations": [
+    "状态原型；未接入真实 MIDI 或完整播放引擎",
+    "下落音符基于现有 PixiJS 等待帧，示范触键端反馈",
+    "复杂连梁、歌词与密集谱面的自动避让待正式实现"
+  ],
+  "source_capture": "source/capture.json"
+}

@@ -1,0 +1,88 @@
+@font-face{font-family:Bravura;src:url('source/Bravura.woff2') format('woff2');font-display:block}
+@font-face{font-family:Academico;src:url('source/Academico.woff2') format('woff2');font-display:block}
+/* Existing app styles live unchanged in source/app-base.css. Only the review
+   dock and the common, non-layout-affecting feedback layer are added here. */
+:root{--review-height:74px;--feedback-good:#278474;--feedback-adjust:#bd792e;--feedback-wrong:#c3425c;--feedback-wait:#b48453;--feedback-muted:#84909d}
+#root,.app{height:calc(100dvh - var(--review-height))}
+body.review-hidden{--review-height:0px}
+body{background:var(--bg-base)}
+#existing-piano{flex-shrink:0}
+.main-content{margin-right:0!important}
+#score-renderer{margin:0}
+#score-renderer>img.captured-falling{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none}
+#feedback-layer{position:absolute;inset:0 0 var(--piano-keyboard-collapsed-height,44px);pointer-events:none;z-index:18;overflow:hidden}
+.feedback-mark{--cue-color:var(--feedback-wait);position:absolute;width:1px;height:1px;isolation:isolate}
+.feedback-mark.good{--cue-color:var(--feedback-good)}
+.feedback-mark.adjust{--cue-color:var(--feedback-adjust)}
+.feedback-mark.wrong{--cue-color:var(--feedback-wrong)}
+.feedback-mark.neutral{--cue-color:var(--feedback-muted)}
+.feedback-signal{position:absolute;left:0;top:0;width:1px;height:1px}
+.feedback-signal.good{--cue-color:var(--feedback-good)}
+.feedback-signal.adjust{--cue-color:var(--feedback-adjust)}
+.feedback-signal.wrong{--cue-color:var(--feedback-wrong)}
+.feedback-signal.wait{--cue-color:var(--feedback-wait)}
+.feedback-signal.neutral{--cue-color:var(--feedback-muted)}
+.note-ring{position:absolute;width:calc(var(--r,12px)*2);height:calc(var(--r,12px)*2);left:calc(var(--r,12px)*-1);top:calc(var(--r,12px)*-1);border:1.6px solid var(--cue-color);border-radius:50%;background:transparent;pointer-events:none;transform-origin:center}
+.note-ring.reference{--r:12px;border:1px dashed color-mix(in srgb,var(--cue-color) 40%,transparent)}
+.note-ring.force{--r:var(--actual-radius,12px);border-color:var(--cue-color);transition:width 250ms ease,height 250ms ease,left 250ms ease,top 250ms ease}
+.note-ring.hit{--r:11px;border-width:2px;animation:note-hit 720ms ease-out forwards}
+.note-ring.pitch-result{border-width:1px;opacity:.6}
+.note-ring.wait{border-width:1.5px;animation:note-wait 1800ms ease-in-out infinite}
+.note-ring.invalid{border-style:dashed;border-color:var(--feedback-muted);opacity:.6}
+.note-ring.chord-done{border-color:var(--feedback-good);opacity:.6}
+.timing-cue{position:absolute;left:-19px;top:var(--timing-top,-50px);width:38px;height:11px;opacity:1;animation:cue-in 180ms ease-out;pointer-events:none}
+.timing-cue:before{content:"";position:absolute;top:5px;left:0;right:0;height:1px;background:color-mix(in srgb,var(--cue-color) 30%,transparent)}
+.timing-cue .zero{position:absolute;left:18px;top:2px;height:7px;width:1px;background:color-mix(in srgb,var(--cue-color) 50%,transparent)}
+.timing-cue .range{position:absolute;left:13px;top:2px;width:12px;height:7px;background:color-mix(in srgb,var(--feedback-good) 12%,transparent);border-radius:2px}
+.timing-cue .needle{position:absolute;left:calc(18px + var(--time-offset,0px));top:0;width:2px;height:11px;background:var(--cue-color);border-radius:2px;transition:left 220ms ease}
+.timing-cue .direction{position:absolute;top:-11px;left:calc(15px + var(--time-offset,0px));color:var(--cue-color);font-size:10px;font-family:system-ui,sans-serif;line-height:10px;font-weight:600}
+.timing-cue.early .needle{animation:early-hint 800ms ease-out 2}
+.timing-cue.late .needle{animation:late-hint 800ms ease-out 2}
+.timing-cue.waited:before,.timing-cue.waited .zero,.timing-cue.waited .range{display:none}
+.timing-cue.waited .direction{left:13px;top:0;font-size:10px;font-weight:500;letter-spacing:1px;color:var(--feedback-muted)}
+.pitch-cross{position:absolute;left:14px;top:-20px;color:var(--feedback-wrong);font:600 13px/1 system-ui,sans-serif;animation:cross-in 300ms ease-out}
+.feedback-spark{position:absolute;left:0;top:0;width:2px;height:2px;border-radius:50%;background:var(--cue-color);animation:spark 550ms ease-out forwards;--dx:0px;--dy:0px}
+.force-direction{position:absolute;left:18px;top:-5px;font:10px/1 system-ui,sans-serif;color:var(--cue-color);animation:cue-in 180ms ease-out}
+.cue-tooltip{position:absolute;z-index:19;max-width:205px;padding:9px 12px;border:1px solid var(--border-color);border-radius:6px;background:color-mix(in srgb,var(--score-paper) 97%,transparent);color:var(--text-primary);box-shadow:0 3px 12px #30344612;pointer-events:auto;font:11px/1.8 system-ui,sans-serif}
+.cue-tooltip strong{font-weight:600}.cue-tooltip button{position:absolute;top:3px;right:4px;font:14px system-ui;border:0;background:none;color:var(--text-muted);cursor:pointer}.cue-tooltip small{display:block;color:var(--text-secondary);font-size:10px}
+.feedback-anchor{cursor:pointer}
+body.comparing #feedback-layer{visibility:hidden}
+body.comparing #cue-tooltip{visibility:hidden}
+.review-dock{position:fixed;bottom:0;left:0;right:0;height:var(--review-height);z-index:70;display:flex;align-items:center;gap:10px;flex-wrap:wrap;align-content:center;padding:9px 16px 21px;background:#f7f6f2;border-top:1px solid #d6d0c8;color:#5c5f77;font-family:system-ui,sans-serif;box-shadow:0 -1px 8px #30344607}
+.review-title{display:flex;flex-direction:column;gap:3px;margin-right:auto;white-space:nowrap}.review-title b{font-size:12px;font-weight:600}.review-title span{font-size:9px;color:#92909a}
+.review-dock button,.review-dock select,.review-dock a,.show-dock{font:11px system-ui,sans-serif;color:#5c5f77;border:1px solid #d6d0c8;background:#fffdf9;border-radius:5px;padding:7px 10px;cursor:pointer;min-height:30px;text-decoration:none;white-space:nowrap}
+.review-dock button:hover,.review-dock a:hover{background:#eee9e2}.review-dock button:focus-visible,.review-dock select:focus-visible,.review-dock a:focus-visible{outline:2px solid #d19a66;outline-offset:2px}
+.view-switch{display:flex;gap:0;background:#ebe7e0;border:1px solid #d6d0c8;border-radius:6px;padding:2px}.view-switch button{border:0;background:transparent;min-height:26px;padding:5px 12px}.view-switch button[aria-pressed=true]{background:#fffdf9;box-shadow:0 1px 4px #30344613;color:#936b43}
+.scene-select{font-size:10px;display:flex;gap:7px;align-items:center}.scene-select select{font-size:10px;padding:6px 24px 6px 8px}
+#baseline-toggle[aria-pressed=true]{border-color:#b9946d;background:#efe4d5;color:#906538}
+#replay{font-size:18px;line-height:1;padding:4px 9px}.review-hint{position:absolute;bottom:6px;left:16px;font-size:9px;color:#9a9494;letter-spacing:.1px;pointer-events:none}
+.show-dock{position:fixed;bottom:5px;left:8px;z-index:80;opacity:.8;font-size:9px;padding:4px 7px;min-height:24px}.show-dock:hover{opacity:1}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+#review-help{border:1px solid var(--border-color);border-radius:9px;max-width:430px;padding:24px;color:var(--text-primary);background:var(--bg-base);font:13px/1.8 system-ui,sans-serif}#review-help::backdrop{background:#30344644}#review-help h2{font-size:17px;margin:0 0 12px}#review-help p{margin:10px 0}#review-help button{border:1px solid var(--border-color);background:var(--bg-surface);border-radius:5px;padding:7px 16px;color:inherit;float:right;cursor:pointer}
+@keyframes note-hit{0%{transform:scale(.8);opacity:.9}70%{opacity:.3}100%{transform:scale(2.05);opacity:0}}
+@keyframes note-wait{0%,100%{opacity:.4;transform:scale(.94)}50%{opacity:.85;transform:scale(1.08)}}
+@keyframes cue-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes early-hint{from{transform:translateX(5px)}to{transform:translateX(0)}}
+@keyframes late-hint{from{transform:translateX(-5px)}to{transform:translateX(0)}}
+@keyframes cross-in{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes spark{from{opacity:.8;transform:translate(0,0)}to{opacity:0;transform:translate(var(--dx),var(--dy))}}
+[hidden]{display:none!important}
+/* Reuse the original settings drawer; it overlays the score only while open. */
+#existing-settings,._backdrop_1vvyv_164{bottom:var(--review-height)}
+#feedback-options{margin:0 10px 4px 18px;padding:0 9px 8px;border:0;border-left:2px solid var(--border-color);min-width:0}
+#feedback-options legend{padding:0 5px;margin-left:-5px;font:11px/1.8 system-ui,sans-serif;color:var(--text-muted)}
+.feedback-setting{width:100%;min-height:38px;gap:7px!important}
+.feedback-setting svg{width:42px;height:24px;margin-left:auto;color:var(--feedback-good)}
+.feedback-setting:has(input:not(:checked)) svg{opacity:.25}
+#feedback-timing+span+svg,#feedback-velocity+span+svg{color:var(--feedback-adjust)}
+#feedback-options small{display:block;font:10px/1.6 system-ui,sans-serif;color:var(--text-muted);margin-top:3px}
+#feedback-options:disabled{opacity:.45}
+#feedback-options input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:1000px){:root{--review-height:106px}.review-dock{gap:7px;padding:8px 12px 24px}.review-title{width:100%;flex-direction:row;align-items:center;gap:9px}.review-hint{left:12px;font-size:8px}}
+@media(max-width:600px){:root{--review-height:143px}.review-dock{padding:8px 10px 29px;gap:6px}.review-title b{font-size:11px}.review-title span{font-size:8px}.review-dock button,.review-dock a{font-size:10px;padding:7px 9px}.view-switch button{padding:7px 12px}.scene-select{margin-left:auto}.scene-select select{max-width:119px;font-size:10px}.review-hint{font-size:8px;bottom:6px;line-height:1.6;right:10px;left:10px;max-width:340px}.timing-cue{transform:scale(.9);transform-origin:center bottom}.cue-tooltip{font-size:10px;max-width:180px}.note-ring{border-width:1.3px}}
+@media(prefers-reduced-motion:reduce){.feedback-mark *{animation:none!important;transition:none!important}.note-ring.hit,.feedback-spark{display:none}.note-ring.wait{opacity:.8}}
+
+.chord-dot{position:absolute;left:12px;top:-2px;width:4px;height:4px;background:var(--feedback-good);border-radius:50%}
+/* One neutral outline keeps the same cue colors readable on staff paper and
+   the existing blue/green falling notes, without filling the note interior. */
+.note-ring,.timing-cue .needle,.timing-cue .direction,.force-direction,.pitch-cross,.chord-dot{filter:drop-shadow(0 0 .8px var(--score-paper)) drop-shadow(0 0 .6px var(--score-paper))}

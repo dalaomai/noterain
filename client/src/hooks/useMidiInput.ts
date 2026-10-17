@@ -239,7 +239,7 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
       const command = status & 0xf0;
       if (command === 0x90 && data2 > 0) {
         setLiveNote(data1, true);
-        addSatisfiedWaitNote(data1);
+        addSatisfiedWaitNote(data1, data2, performance.now());
         callbacksRef.current.onNoteOn?.(data1, data2);
       } else if (command === 0x80 || (command === 0x90 && data2 === 0)) {
         setLiveNote(data1, false);
@@ -275,7 +275,7 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
 
     const handleNoteOn = (e: NoteMessageEvent) => {
       setLiveNote(e.note.number, true);
-      addSatisfiedWaitNote(e.note.number);
+      addSatisfiedWaitNote(e.note.number, e.note.rawAttack, e.timestamp);
       callbacksRef.current.onNoteOn?.(e.note.number, e.note.rawAttack);
     };
 

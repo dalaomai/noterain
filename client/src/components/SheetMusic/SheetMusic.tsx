@@ -13,6 +13,7 @@ import {
 } from 'vexflow';
 import { useMidiStore } from '../../stores/midiStore';
 import type { MidiNote, MidiTrack } from '../../types/midi';
+import { followNoteKey } from '../../lib/followMode';
 import styles from './SheetMusic.module.css';
 
 interface SheetMusicProps {
@@ -913,6 +914,7 @@ export function SheetMusic({
             startTime: number;
             endTime: number;
             staveNoteIndex: number;
+            notes: MidiNote[];
           }[];
         }[] = [];
 
@@ -988,6 +990,7 @@ export function SheetMusic({
             startTime: number;
             endTime: number;
             staveNoteIndex: number;
+            notes: MidiNote[];
           }[] = [];
           let currentBeat = 0;
 
@@ -1050,6 +1053,7 @@ export function SheetMusic({
                   startTime: notes[0].startTime,
                   endTime: notes[0].startTime + maxDuration,
                   staveNoteIndex: staveNotes.length - 1,
+                  notes,
                 });
                 currentBeat = noteBeat + durationToBeats(duration);
               } catch {
@@ -1129,6 +1133,19 @@ export function SheetMusic({
               noteTimings.forEach((timing) => {
                 try {
                   const staveNote = staveNotes[timing.staveNoteIndex];
+                  if (staveNote instanceof StaveNote) {
+                    const heads = staveNote.getSVGElement()?.querySelectorAll<SVGGElement>('.vf-notehead');
+                    const ys = staveNote.getYs();
+                    timing.notes.forEach((note, i) => {
+                      const head = heads?.[i];
+                      if (!head) return;
+                      const glyph = head.querySelector('text');
+                      const headX = glyph ? Number(glyph.getAttribute('x')) + staveNote.noteHeads[i].getWidth() / 2 : (staveNote.getNoteHeadBeginX() + staveNote.getNoteHeadEndX()) / 2;
+                      head.dataset.followNote = followNoteKey(note);
+                      head.dataset.followX = String(headX);
+                      head.dataset.followY = String(ys[i]);
+                    });
+                  }
                   const noteX = staveNote.getAbsoluteX();
                   const bb = staveNote.getBoundingBox();
                   if (bb) {
@@ -1299,7 +1316,7 @@ export function SheetMusic({
 
       // Find and highlight active notes
       for (const pos of notePositions) {
-        if (currentTime >= pos.startTime && currentTime < pos.endTime) {
+        if (!useMidiStore.getState().playback.waitMode && currentTime >= pos.startTime && currentTime < pos.endTime) {
           const highlight = document.createElement('div');
           highlight.className = styles.noteHighlight;
           highlight.style.left = `${pos.x - 4}px`;
@@ -1449,6 +1466,7 @@ export function SheetMusic({
   return (
     <div
       ref={containerRef}
+      data-follow-view="simplified"
       className={styles.container}
       style={
         isPlaying ? { overflow: 'hidden', scrollSnapType: 'none' } : undefined

@@ -19,6 +19,7 @@ export function usePlayback() {
   const pause = useMidiStore((s) => s.pause);
   const stop = useMidiStore((s) => s.stop);
   const seek = useMidiStore((s) => s.seek);
+  const advancePlayback = useMidiStore((s) => s.advancePlayback);
   const setSpeed = useMidiStore((s) => s.setSpeed);
   const toggleWaitMode = useMidiStore((s) => s.toggleWaitMode);
   const setActiveNotes = useMidiStore((s) => s.setActiveNotes);
@@ -26,7 +27,8 @@ export function usePlayback() {
   const buildWaitModeNoteList = useMidiStore((s) => s.buildWaitModeNoteList);
   const resetWaitModeState = useMidiStore((s) => s.resetWaitModeState);
   const advanceWaitModeReached = useMidiStore((s) => s.advanceWaitModeReached);
-  const hasUnsatisfiedWaitNotes = useMidiStore((s) => s.hasUnsatisfiedWaitNotes);
+  const getWaitModeBoundary = useMidiStore((s) => s.getWaitModeBoundary);
+  const setWaitModeBlocked = useMidiStore((s) => s.setWaitModeBlocked);
   const setLoopRange = useMidiStore((s) => s.setLoopRange);
   const toggleLoop = useMidiStore((s) => s.toggleLoop);
   const clearLoop = useMidiStore((s) => s.clearLoop);
@@ -93,6 +95,7 @@ export function usePlayback() {
 
     // Build the sorted note list for wait mode (index-based tracking)
     buildWaitModeNoteList();
+    let seekVersion = useMidiStore.getState().seekVersion;
 
     const tick = () => {
       const state = useMidiStore.getState();
@@ -120,15 +123,20 @@ export function usePlayback() {
       }
 
       const now = performance.now();
-      const deltaMs = now - lastTimeRef.current;
+      let deltaMs = now - lastTimeRef.current;
       lastTimeRef.current = now;
 
       // Check if user seeked externally (slider) - sync if store time differs significantly
       const storeTime = state.playback.currentTime;
-      if (Math.abs(storeTime - currentTimeRef.current) > 0.1) {
+      if (state.seekVersion !== seekVersion || Math.abs(storeTime - currentTimeRef.current) > 0.1) {
+        const explicitSeek = state.seekVersion !== seekVersion;
+        if (explicitSeek) deltaMs = 0;
+        seekVersion = state.seekVersion;
         currentTimeRef.current = storeTime;
         scheduledNotesRef.current.clear(); // Clear scheduled notes on seek
-        resetWaitModeState(storeTime); // Reset wait mode cursor and satisfaction
+        // seek() already reset progress. Do not erase an input arriving between
+        // the seek and this frame; other position changes still need a reset.
+        if (!explicitSeek) resetWaitModeState(storeTime);
         // Reset scheduling cursor via binary search
         const sn = sortedNotesRef.current.notes;
         let lo = 0, hi = sn.length;
@@ -145,6 +153,11 @@ export function usePlayback() {
       const deltaSeconds = (deltaMs / 1000) * speed;
       const prevTime = currentTimeRef.current;
       let newTime = prevTime + deltaSeconds;
+      // Clamp at the first missing onset, even after a slow frame. A short
+      // note must not expire and let the player skip it without playing it.
+      const boundary = state.playback.waitMode ? getWaitModeBoundary(newTime) : null;
+      const blocked = boundary !== null;
+      if (boundary !== null) newTime = Math.max(prevTime, boundary);
       currentTimeRef.current = newTime;
 
       // Check for loop boundary
@@ -208,15 +221,20 @@ export function usePlayback() {
         }
       }
 
-      // Wait mode: index-based tracking - no timing issues!
+      // Waiting holds the score while the independent event clock keeps time.
       if (state.playback.waitMode) {
         // Advance the cursor to include any notes we've reached at newTime
         advanceWaitModeReached(newTime);
 
         // Check if there are unsatisfied notes that are still active at newTime
-        if (hasUnsatisfiedWaitNotes(newTime)) {
-          // Don't advance time - keep currentTimeRef at prevTime
-          currentTimeRef.current = prevTime;
+        setWaitModeBlocked(blocked, now);
+        if (blocked) {
+          advancePlayback(newTime);
+          const previous = prevActiveNotesRef.current;
+          if (activeNoteNumbers.size !== previous.size || [...activeNoteNumbers].some((n) => !previous.has(n))) {
+            prevActiveNotesRef.current = activeNoteNumbers;
+            setActiveNotes(activeNoteNumbers);
+          }
           // Still update the animation frame to keep checking
           animationFrameRef.current = requestAnimationFrame(tick);
           return;
@@ -241,7 +259,7 @@ export function usePlayback() {
         prevActiveNotesRef.current = activeNoteNumbers;
         setActiveNotes(activeNoteNumbers);
       }
-      seek(newTime);
+      advancePlayback(newTime);
 
       animationFrameRef.current = requestAnimationFrame(tick);
     };
@@ -266,7 +284,9 @@ export function usePlayback() {
     buildWaitModeNoteList,
     resetWaitModeState,
     advanceWaitModeReached,
-    hasUnsatisfiedWaitNotes,
+    getWaitModeBoundary,
+    setWaitModeBlocked,
+    advancePlayback,
   ]);
 
   // Reset scheduled notes when stopping
@@ -328,7 +348,7 @@ export function usePlayback() {
   const handleStop = useCallback(() => {
     stopAll();
     stop();
-    resetWaitModeState(0);
+    resetWaitModeState(useMidiStore.getState().playback.currentTime);
   }, [stop, stopAll, resetWaitModeState]);
 
   /** Seek to position (0-1) */

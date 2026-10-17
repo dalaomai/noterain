@@ -56,6 +56,7 @@ export function FallingNotes({
   return (
     <div
       ref={containerRef}
+      data-follow-view="falling"
       style={{
         width: '100%',
         minHeight: 0,

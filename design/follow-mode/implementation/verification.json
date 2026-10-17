@@ -1,0 +1,469 @@
+{
+  "status": "passed",
+  "date": "2026-10-17",
+  "url": "http://localhost:5184/",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "method": "Installed Chrome via CDP; real MusicXML/MIDI imports; simulated MIDIMessageEvent through WebMidi and useMidiInput; actual pointer clicks on controls; real renderer geometry",
+  "checks": [
+    {
+      "name": "三个新设置默认开启且复用原设置栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：真实输入链路触发错音并保持等待",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：反馈定位在实际视图内且不拦截谱面",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：环与真实符头中心对齐",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：重复和弦音不填补缺音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：和弦完成点与待补呼吸共存",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：最后一音补齐后继续且等待后完成不伪装准时",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：生成的 MusicXML 力度不产生实际力度环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：MusicXML 明确力度标记成为可信参考",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：真实输入链路触发错音并保持等待",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：反馈定位在实际视图内且不拦截谱面",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：环与真实符头中心对齐",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：重复和弦音不填补缺音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：和弦完成点与待补呼吸共存",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：最后一音补齐后继续且等待后完成不伪装准时",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：生成的 MusicXML 力度不产生实际力度环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：MusicXML 明确力度标记成为可信参考",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：真实输入链路触发错音并保持等待",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：反馈定位在实际视图内且不拦截谱面",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：重复和弦音不填补缺音",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：和弦完成点与待补呼吸共存",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：最后一音补齐后继续且等待后完成不伪装准时",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：生成的 MusicXML 力度不产生实际力度环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：MusicXML 明确力度标记成为可信参考",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：可评估 MIDI 力度偏重与偏晚呈现同一套图形",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：提前有效输入显示左偏、偏轻小环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 000",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 0",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 100",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 1",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 010",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 2",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 110",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 3",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 001",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 4",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 101",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 5",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 011",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 6",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：实际开关组合 111",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：组合不改变已完成音或等待规则 7",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：力度关闭不隐藏错音环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：全部关闭仍可完成并且无新增提示",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：暂停后按需详情遵守开关",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：继续弹奏收起详情",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：可评估 MIDI 力度偏重与偏晚呈现同一套图形",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：提前有效输入显示左偏、偏轻小环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 000",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 0",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 100",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 1",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 010",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 2",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 110",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 3",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 001",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 4",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 101",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 5",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 011",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 6",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：实际开关组合 111",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：组合不改变已完成音或等待规则 7",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：力度关闭不隐藏错音环",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：全部关闭仍可完成并且无新增提示",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：暂停后按需详情遵守开关",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：继续弹奏收起详情",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "原谱与另两视图共用反馈偏好",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "设置开启不改变谱面宽度",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "关闭跟弹后子开关置灰、反馈停止且保留选择",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：手机没有页面横向溢出和新增反馈侧栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "original：手机反馈在当前音上可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：手机没有页面横向溢出和新增反馈侧栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "simplified：手机反馈在当前音上可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：手机没有页面横向溢出和新增反馈侧栏",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "falling：手机反馈在当前音上可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机设置的三个反馈开关均可见",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "手机可实际切换力度开关",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "减少动态效果时等待环静止",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "深色主题反馈具备独立适配颜色",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "运行期间无脚本异常",
+      "passed": true,
+      "observed": true
+    },
+    {
+      "name": "刷新后记住三项独立选择",
+      "passed": true,
+      "observed": true
+    }
+  ],
+  "limits": [
+    "没有连接实体 MIDI 键盘；硬件消息由浏览器测试端口模拟",
+    "未标注数值力度或未量化渐强的 MusicXML 段落不评估力度"
+  ],
+  "source_verification": {
+    "method": "Browser ran an immutable copy of the current feature files, to avoid unrelated development reloads. SHA-256 values match the workspace.",
+    "files": {
+      "client/src/App.tsx": "4516152f61d78f6a5af5a69abe4947bc5cf3302a3cc1c057eb76a884b1a92789",
+      "client/src/App.css": "096c08d1e279fc7fe18dc15f145053549b25dd9647d09954c7d57f9e03f53384",
+      "client/src/components/FollowFeedback/FollowFeedback.tsx": "986c02e61bd6c48751abfae9327c9ce5177ac1326abe7fc9732e61263fc57897",
+      "client/src/components/FollowFeedback/FollowFeedback.module.css": "b535d15224d17ed325d78779341c52f01cec27cd823717e83a4ae3c232ecb496",
+      "client/src/components/Controls/Controls.tsx": "14a10728321ce44b0cfffe8ae859ee1982dad32de00843f736e7114cc47eb252",
+      "client/src/components/Controls/Controls.module.css": "6bb69ee8d0f147e26bda30efa1b7df48bc1c02ff5e426d3f3ea364cda091672c",
+      "client/src/components/MusicXmlSheet/MusicXmlSheet.tsx": "3001622a7e7c850285a4b6076168fa87b7b4a79ef4eec5fbd5284f767fb41304",
+      "client/src/components/SheetMusic/SheetMusic.tsx": "a15493848bd9753f32222bbb7b5650e24b77069f137afbed34fbc14a95767127",
+      "client/src/components/FallingNotes/FallingNotes.tsx": "9db071ce9fe8144bf59b925f2925726c89bf0735dc3fce599d90a773b204b3ba",
+      "client/src/hooks/useMidiInput.ts": "3810d26d8bada52ba9fda2185e2564906809b179c500f1d60113476eda44663d",
+      "client/src/hooks/usePlayback.ts": "f92e085fd3b1a618a2c3cbdc9fb45cab761d1fd3c48cd396cf88585aa71a600c",
+      "client/src/stores/midiStore.ts": "f18157c15624821ccd46309f30a5e36280ccb50b532d9197836cd1320147b6c3",
+      "client/src/types/midi.ts": "8825a199e02e1609563d22898e26c3a8e834a7a58f8d8a5d0d2a9db3f02e8da3",
+      "client/src/lib/followMode.ts": "bde8dc3677decda05a6d2fbc09e5750f7e33cf115e4999c1a886e67e2c4faa13",
+      "client/src/lib/musicxml/parser.ts": "562c19daba7589bf26b6c62e3fdc4301d67f4ff9c1374e09d247c78601a69226",
+      "client/src/lib/musicxml/velocity.ts": "3323aa7d751ae9e681aa84ec5dc506cdef70e3ed3a17253c986a980b8bde2d13"
+    }
+  },
+  "automated_tests": {
+    "command": "npm test",
+    "status": "passed",
+    "tests": 27
+  },
+  "production_build": {
+    "command": "npm run build",
+    "status": "passed"
+  },
+  "lint": {
+    "changed_feature_files": "passed with 0 errors; 3 existing React-hook warnings",
+    "full_project": "2 existing unused-variable errors in client/scripts/analyze-midi.ts"
+  },
+  "fixtures": [
+    "../source/twinkle.musicxml",
+    "velocity-fixture.mid"
+  ]
+}

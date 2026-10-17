@@ -44,6 +44,8 @@ interface ControlsProps {
   isLoadingFullVelocity: boolean;
 }
 
+const FEEDBACK_OPTIONS = ['followPitchFeedback', 'followTimingFeedback', 'followVelocityFeedback'] as const;
+
 export function Controls({ isLoadingFullVelocity }: ControlsProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const autoCloseTimerRef = useRef<number | null>(null);
@@ -427,7 +429,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           <div className={styles.gridItem}>
             <button
               className={`${styles.button} ${styles.viewButton} ${!settings.showSheetMusic ? styles.active : ''}`}
-              onClick={() => updateSettings({ showSheetMusic: false })}
+              onClick={() => updateSettings({ showSheetMusic: false, showFallingNotes: true })}
             >
               {t('fallingNotes')}
             </button>
@@ -643,6 +645,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               <input
                 type="checkbox"
                 checked={waitMode}
+                data-testid="follow-mode"
                 onChange={toggleWaitMode}
               />
               {t('waitForInput')}
@@ -671,6 +674,18 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               </>
             )}
           </div>
+
+          <fieldset className={styles.feedbackOptions} disabled={!waitMode} data-testid="follow-feedback-settings">
+            <legend>{t('followFeedback')}</legend>
+            {FEEDBACK_OPTIONS.map((key) => <label key={key} className={`${styles.checkboxLabel} ${styles.feedbackOption}`}>
+              <input type="checkbox" checked={settings[key]} onChange={(event) => updateSettings({ [key]: event.target.checked })} data-testid={key} />
+              <span>{t(key)}</span>
+              <svg viewBox="0 0 42 24" aria-hidden="true" className={key === 'followPitchFeedback' ? styles.pitchSample : styles.adjustSample}>
+                {key === 'followTimingFeedback' ? <><path d="M5 12h32M21 8v8" fill="none" stroke="currentColor" opacity=".4" /><path d="M29 6v12" fill="none" stroke="currentColor" strokeWidth="2" /></> : <><circle cx="21" cy="12" r="7" fill="none" stroke="currentColor" strokeDasharray={key === 'followVelocityFeedback' ? '2 2' : undefined} opacity=".45" /><circle cx="21" cy="12" r="10" fill="none" stroke="currentColor" /></>}
+              </svg>
+            </label>)}
+            <small>{t('followFeedbackShared')}</small>
+          </fieldset>
 
           {/* Speed control */}
           <div className={styles.gridItem}>

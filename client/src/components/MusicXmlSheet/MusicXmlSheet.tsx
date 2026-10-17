@@ -7,6 +7,7 @@ import {
   type MusicXmlTimeEvent,
 } from '../../lib/musicxml/parser';
 import { useMidiStore } from '../../stores/midiStore';
+import { followNoteKey } from '../../lib/followMode';
 import styles from './MusicXmlSheet.module.css';
 
 const STAGE_LABELS: Record<MusicXmlRenderStage, TranslationKeys> = {
@@ -58,6 +59,7 @@ export function MusicXmlSheet() {
   const { t } = useI18n();
   const currentFile = useMidiStore((state) => state.getCurrentFile());
   const isPlaying = useMidiStore((state) => state.playback.isPlaying);
+  const waitMode = useMidiStore((state) => state.playback.waitMode);
   const scoreDensity = useMidiStore((state) => state.settings.scoreDensity);
   const expandRepeats = useMidiStore(
     (state) => state.settings.expandMusicXmlRepeats,
@@ -103,6 +105,31 @@ export function MusicXmlSheet() {
     }
     return times;
   }, [timeMap]);
+
+  // Match the engraving's own MIDI pitch and onset to the playback events.
+  // An ID may occur more than once in a collapsed repeat; keep every event key.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !currentFile) return;
+    const notes = currentFile.tracks.flatMap((track) => track.notes);
+    const byPitch = new Map<number, typeof notes>();
+    for (const note of notes) { const group = byPitch.get(note.noteNumber) ?? [];group.push(note);byPitch.set(note.noteNumber, group); }
+    const staffTracks = currentFile.tracks.filter((track) => track.notes.length > 0);
+    const onsets = new Map<string, number[]>();
+    for (const event of timeMap) for (const id of event.on ?? []) {
+      const times = onsets.get(id) ?? [];
+      times.push(event.tstamp / 1000);onsets.set(id, times);
+    }
+    for (const element of container.querySelectorAll<SVGGElement>('.note[data-midi-pitch]')) {
+      const pitch = Number(element.dataset.midiPitch);
+      const times = onsets.get(element.id) ?? [];
+      const staffTrack = staffTracks[Number(element.dataset.midiStaff) - 1]?.index;
+      const matches = (byPitch.get(pitch) ?? []).filter((note) => times.some((time) => Math.abs(time - note.startTime) < 0.005));
+      const preferred = staffTrack !== undefined ? matches.filter((note) => note.track === staffTrack) : [];
+      const head = element.querySelector<SVGGElement>('.notehead');
+      if (head) head.dataset.followNote = (preferred.length ? preferred : matches).map(followNoteKey).join(' ');
+    }
+  }, [currentFile, pages, timeMap]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -252,6 +279,9 @@ export function MusicXmlSheet() {
               `#${CSS.escape(id)}`,
             );
             if (!element) continue;
+            // The follow layer supplies a small cue at the head. Keep the
+            // original scrolling, but avoid covering it with the old red fill.
+            if (waitMode) continue;
             element.classList.add(styles.playing);
             activeIdsRef.current.add(id);
 
@@ -296,11 +326,12 @@ export function MusicXmlSheet() {
       clearHighlights();
       eventIndexRef.current = -1;
     };
-  }, [isPlaying, pages, playbackFrames, timeMap]);
+  }, [isPlaying, pages, playbackFrames, timeMap, waitMode]);
 
   return (
     <div
       ref={containerRef}
+      data-follow-view="original"
       className={styles.container}
       onClick={handleScoreClick}
     >

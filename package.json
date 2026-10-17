@@ -14,6 +14,7 @@
     "build": "npm run build -w client",
     "preview": "npm run preview -w client",
     "lint": "npm run lint -w client",
+    "test": "npm run test -w client",
     "format": "prettier --write \"client/src/**/*.{ts,tsx}\""
   },
   "devDependencies": {

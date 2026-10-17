@@ -8,6 +8,7 @@ import type {
   MidiNote,
 } from '../types/midi';
 import { DEFAULT_SETTINGS, PIANO_MIN_NOTE, PIANO_MAX_NOTE } from '../types/midi';
+import { firstPendingIndex, pendingGroup, inputOffsetMs, judgeFollowInput, type FollowClock, type FollowResult } from '../lib/followMode';
 
 interface MidiStore {
   // MIDI Files
@@ -33,6 +34,8 @@ interface MidiStore {
   pause: () => void;
   stop: () => void;
   seek: (time: number) => void;
+  advancePlayback: (time: number) => void;
+  seekVersion: number;
   setSpeed: (speed: number) => void;
   toggleWaitMode: () => void;
   setActiveNotes: (notes: Set<number>) => void;
@@ -56,6 +59,13 @@ interface MidiStore {
   waitModeSatisfiedIndices: Set<number>;
   // Cursor: index of first note NOT yet reached (notes before this are "due")
   waitModeReachedIndex: number;
+  waitModePendingIndex: number;
+  waitModeClock: FollowClock;
+  waitModeBlocked: boolean;
+  followResults: FollowResult[];
+  followResultId: number;
+  getWaitModeBoundary: (time: number) => number | null;
+  setWaitModeBlocked: (blocked: boolean, timestamp?: number) => void;
   // Build the sorted note list from enabled tracks
   buildWaitModeNoteList: () => void;
   // Reset wait mode state (on seek, stop, loop)
@@ -63,7 +73,7 @@ interface MidiStore {
   // Advance the reached cursor based on current time
   advanceWaitModeReached: (currentTime: number) => void;
   // Satisfy a note by pitch - finds earliest unsatisfied reached note
-  addSatisfiedWaitNote: (noteNumber: number) => void;
+  addSatisfiedWaitNote: (noteNumber: number, velocity?: number, timestamp?: number) => void;
   // Check if there are unsatisfied notes that are still active at given time
   hasUnsatisfiedWaitNotes: (currentTime?: number) => boolean;
   // Get count of unsatisfied notes still active at given time
@@ -106,7 +116,10 @@ export const useMidiStore = create<MidiStore>()(
           ),
         })),
 
-      setCurrentFile: (id) => set({ currentFileId: id }),
+      setCurrentFile: (id) => {
+        set((state) => ({ currentFileId: id, playback: { ...state.playback, currentTime: 0, isPlaying: false, activeNotes: new Set() }, followResults: [], waitModeSatisfiedIndices: new Set(), seekVersion: state.seekVersion + 1 }));
+        get().buildWaitModeNoteList();
+      },
 
       getCurrentFile: () => {
         const state = get();
@@ -154,7 +167,10 @@ export const useMidiStore = create<MidiStore>()(
 
         set({
           playback: { ...state.playback, isPlaying: true, currentTime },
+          waitModeClock: { scoreTime: currentTime, timestamp: performance.now(), speed: state.playback.speed },
+          waitModeBlocked: false,
         });
+        if (currentTime !== state.playback.currentTime) get().resetWaitModeState(currentTime);
       },
 
       pause: () =>
@@ -179,26 +195,37 @@ export const useMidiStore = create<MidiStore>()(
             currentTime: resetTime,
             activeNotes: new Set(),
           },
+          followResults: [],
+          seekVersion: state.seekVersion + 1,
         });
+        get().resetWaitModeState(resetTime);
       },
 
-      seek: (time) =>
-        set((state) => ({
-          playback: { ...state.playback, currentTime: Math.max(0, time) },
-        })),
+      seekVersion: 0,
+      seek: (time) => {
+        const state = get();
+        const file = state.getCurrentFile();
+        const nextTime = Math.max(0, Math.min(time, file?.duration ?? time));
+        set({ playback: { ...state.playback, currentTime: nextTime }, seekVersion: state.seekVersion + 1 });
+        get().resetWaitModeState(nextTime);
+      },
+      advancePlayback: (time) => set((state) => state.playback.currentTime === time ? state : ({ playback: { ...state.playback, currentTime: time } })),
 
-      setSpeed: (speed) =>
-        set((state) => ({
-          playback: {
-            ...state.playback,
-            speed: Math.max(0.1, Math.min(2, speed)),
-          },
-        })),
+      setSpeed: (speed) => set((state) => {
+        const next = Math.max(0.1, Math.min(2, speed));
+        const now = performance.now();
+        const due = state.waitModeClock.timestamp + (state.playback.currentTime - state.waitModeClock.scoreTime) / state.waitModeClock.speed * 1000;
+        return { playback: { ...state.playback, speed: next }, waitModeClock: { scoreTime: state.playback.currentTime, timestamp: state.waitModeBlocked ? due : now, speed: next } };
+      }),
 
-      toggleWaitMode: () =>
+      toggleWaitMode: () => {
         set((state) => ({
           playback: { ...state.playback, waitMode: !state.playback.waitMode },
-        })),
+          followResults: [],
+        }));
+        get().buildWaitModeNoteList();
+        get().resetWaitModeState(get().playback.currentTime);
+      },
 
       setActiveNotes: (notes) =>
         set((state) => ({
@@ -319,24 +346,39 @@ export const useMidiStore = create<MidiStore>()(
       waitModeSortedNotes: [],
       waitModeSatisfiedIndices: new Set(),
       waitModeReachedIndex: 0,
+      waitModePendingIndex: 0,
+      waitModeClock: { scoreTime: 0, timestamp: 0, speed: 1 },
+      waitModeBlocked: false,
+      followResults: [],
+      followResultId: 0,
+      getWaitModeBoundary: (time) => {
+        const state = get();
+        const note = state.waitModeSortedNotes[state.waitModePendingIndex];
+        return note && note.startTime <= time ? note.startTime : null;
+      },
+      setWaitModeBlocked: (blocked, timestamp = performance.now()) => set((state) => {
+        if (state.waitModeBlocked === blocked) return state;
+        return { waitModeBlocked: blocked, ...(!blocked ? { waitModeClock: { scoreTime: state.playback.currentTime, timestamp, speed: state.playback.speed } } : {}) };
+      }),
 
       // Build sorted note list from enabled tracks
       buildWaitModeNoteList: () => {
         const state = get();
         const file = state.files.find((f) => f.id === state.currentFileId);
         if (!file) {
-          set({ waitModeSortedNotes: [], waitModeSatisfiedIndices: new Set(), waitModeReachedIndex: 0 });
+          set({ waitModeSortedNotes: [], waitModeSatisfiedIndices: new Set(), waitModeReachedIndex: 0, waitModePendingIndex: 0, followResults: [], waitModeBlocked: false });
           return;
         }
 
         const notes: MidiNote[] = [];
         for (const track of file.tracks) {
-          if (track.enabled) {
+          if (track.enabled && !track.renderOnly) {
             notes.push(...track.notes);
           }
         }
         // Sort by startTime - this is the only time comparison we do, and it's done once
         notes.sort((a, b) => a.startTime - b.startTime);
+        if (notes.length === state.waitModeSortedNotes.length && notes.every((note, i) => note === state.waitModeSortedNotes[i])) return;
 
         // Find the starting cursor position based on current playback time
         const currentTime = state.playback.currentTime;
@@ -358,6 +400,10 @@ export const useMidiStore = create<MidiStore>()(
           waitModeSortedNotes: notes,
           waitModeSatisfiedIndices: preSatisfied,
           waitModeReachedIndex: reachedIndex,
+          waitModePendingIndex: firstPendingIndex(notes, preSatisfied),
+          followResults: [],
+          waitModeBlocked: false,
+          waitModeClock: { scoreTime: currentTime, timestamp: performance.now(), speed: state.playback.speed },
         });
       },
 
@@ -385,6 +431,10 @@ export const useMidiStore = create<MidiStore>()(
         set({
           waitModeSatisfiedIndices: preSatisfied,
           waitModeReachedIndex: reachedIndex,
+          waitModePendingIndex: firstPendingIndex(state.waitModeSortedNotes, preSatisfied),
+          followResults: [],
+          waitModeBlocked: false,
+          waitModeClock: { scoreTime: time, timestamp: performance.now(), speed: state.playback.speed },
         });
       },
 
@@ -400,40 +450,39 @@ export const useMidiStore = create<MidiStore>()(
           return { waitModeReachedIndex: newIndex };
         }),
 
-      // Satisfy a note - finds earliest unsatisfied reached note with matching pitch
-      // NO TIME COMPARISONS - just integer index comparisons
-      addSatisfiedWaitNote: (noteNumber) =>
+      // One input matches one tone in the current onset. Visibility preferences
+      // never participate in matching, timing or the decision to keep waiting.
+      addSatisfiedWaitNote: (noteNumber, velocity, timestamp = performance.now()) =>
         set((state) => {
-          // Don't register keypresses while paused
-          if (!state.playback.isPlaying) return state;
-
-          // Look through reached notes (indices 0 to reachedIndex-1) for an unsatisfied match
-          for (let i = 0; i < state.waitModeReachedIndex; i++) {
-            const note = state.waitModeSortedNotes[i];
-            if (note.noteNumber === noteNumber && !state.waitModeSatisfiedIndices.has(i)) {
-              // Found an unsatisfied note with matching pitch - satisfy it
-              const newSatisfied = new Set(state.waitModeSatisfiedIndices);
-              newSatisfied.add(i);
-              return { waitModeSatisfiedIndices: newSatisfied };
-            }
-          }
-
-          // Also check notes slightly ahead (grace period for early hits)
-          // Look up to grace period seconds ahead
-          const currentTime = state.playback.currentTime;
-          const gracePeriodSeconds = state.settings.waitModeGracePeriod / 1000;
-          for (let i = state.waitModeReachedIndex; i < state.waitModeSortedNotes.length; i++) {
-            const note = state.waitModeSortedNotes[i];
-            // Stop if we're past the grace period
-            if (note.startTime > currentTime + gracePeriodSeconds) break;
-            if (note.noteNumber === noteNumber && !state.waitModeSatisfiedIndices.has(i)) {
-              const newSatisfied = new Set(state.waitModeSatisfiedIndices);
-              newSatisfied.add(i);
-              return { waitModeSatisfiedIndices: newSatisfied };
-            }
-          }
-
-          return state;
+          if (!state.playback.isPlaying || !state.playback.waitMode) return state;
+          const notes = state.waitModeSortedNotes;
+          const group = pendingGroup(notes, state.waitModePendingIndex);
+          if (!group.length) return state;
+          const target = notes[group[0]];
+          if (inputOffsetMs(state.waitModeClock, target.startTime, timestamp) < -state.settings.waitModeGracePeriod) return state;
+          const match = group.find((i) => notes[i].noteNumber === noteNumber && !state.waitModeSatisfiedIndices.has(i));
+          if (match === undefined && group.some((i) => notes[i].noteNumber === noteNumber)) return state;
+          const index = match ?? group.find((i) => !state.waitModeSatisfiedIndices.has(i))!;
+          const note = notes[index];
+          const id = state.followResultId + 1;
+          const correct = match !== undefined;
+          const file = state.getCurrentFile();
+          const result: FollowResult = {
+            id, note, kind: correct ? 'correct' : 'wrong', inputPitch: noteNumber, timestamp,
+            ...(correct ? judgeFollowInput(note, state.waitModeClock, timestamp, velocity, file?.sourceFormat === 'musicxml' ? note.referenceVelocity ?? null : note.velocity)
+              : { offsetMs: null, timing: null, velocity: null, referenceVelocity: null }),
+          };
+          const satisfied = new Set(state.waitModeSatisfiedIndices);
+          if (correct) satisfied.add(index);
+          const nextPending = firstPendingIndex(notes, satisfied, state.waitModePendingIndex);
+          const released = correct && state.waitModeBlocked && (!notes[nextPending] || notes[nextPending].startTime > state.playback.currentTime);
+          return {
+            waitModeSatisfiedIndices: satisfied,
+            waitModePendingIndex: nextPending,
+            ...(released ? { waitModeBlocked: false, waitModeClock: { scoreTime: state.playback.currentTime, timestamp, speed: state.playback.speed } } : {}),
+            followResults: [...state.followResults.filter((r) => r.note !== note), result].slice(-256),
+            followResultId: id,
+          };
         }),
 
       // Check if there are unsatisfied notes that are still active (currently playing)
@@ -497,7 +546,7 @@ export const useMidiStore = create<MidiStore>()(
         get().buildWaitModeNoteList();
       },
 
-      toggleTrackRenderOnly: (fileId, trackIndex) =>
+      toggleTrackRenderOnly: (fileId, trackIndex) => {
         set((state) => ({
           files: state.files.map((f) =>
             f.id === fileId
@@ -511,7 +560,9 @@ export const useMidiStore = create<MidiStore>()(
                 }
               : f,
           ),
-        })),
+        }));
+        get().buildWaitModeNoteList();
+      },
 
       toggleTrackPlayAudio: (fileId, trackIndex) =>
         set((state) => ({

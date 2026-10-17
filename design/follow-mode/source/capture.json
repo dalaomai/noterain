@@ -1,0 +1,17 @@
+{
+  "url": "http://localhost:5173",
+  "date": "2026-10-17",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "source": "Existing running app, original MusicXML / VexFlow simplified / PixiJS falling notes",
+  "snapshots": [
+    "desktop-original",
+    "desktop-simplified",
+    "desktop-falling",
+    "mobile-original",
+    "mobile-simplified",
+    "mobile-falling"
+  ]
+}

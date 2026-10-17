@@ -1,11 +1,13 @@
 import { parseMidiFile } from '../midi/parser';
 import type { MidiFile, ScoreDensity } from '../../types/midi';
+import { attachMusicXmlVelocityReferences } from './velocity';
 
 interface VerovioToolkitLike {
   destroy(): void;
   getNotatedIdForElement(xmlId: string): string;
   getPageCount(): number;
   getMEI(): string;
+  getMIDIValuesForElement(xmlId: string): { pitch?: number };
   loadData(data: string): boolean;
   loadZipDataBuffer(data: ArrayBuffer): boolean;
   renderToMIDI(): string;
@@ -19,6 +21,8 @@ export interface MusicXmlTimeEvent {
   off?: string[];
   on?: string[];
   tstamp: number;
+  qstamp?: number;
+  tempo?: number;
 }
 
 export interface MusicXmlRenderResult {
@@ -115,6 +119,7 @@ export async function parseMusicXmlFile(file: File): Promise<MidiFile> {
     }
 
     const parsed = parseMidiFile(base64ToArrayBuffer(midiBase64), file.name);
+    attachMusicXmlVelocityReferences(parsed, toolkit.getMEI(), toolkit.renderToTimemap({ includeMeasures: true }), (id) => toolkit.getNotatedIdForElement(id) || id);
     const metadata = new DOMParser().parseFromString(
       musicXml ?? toolkit.getMEI(),
       'application/xml',
@@ -234,6 +239,20 @@ export async function renderMusicXmlPages(
       off: event.off?.map(toRenderedId),
       on: event.on?.map(toRenderedId),
     }));
+    const elementPitches = new Map<string, number>();
+    const elementStaffs = new Map<string, string>();
+    const engraving = new DOMParser().parseFromString(toolkit.getMEI(), 'application/xml');
+    for (const element of engraving.querySelectorAll('note')) {
+      const id = element.getAttribute('xml:id');
+      const staff = element.closest('staff')?.getAttribute('n');
+      if (id && staff && /^\d+$/.test(staff)) elementStaffs.set(toRenderedId(id), staff);
+    }
+    for (const event of timeMap) {
+      for (const id of event.on ?? []) {
+        const pitch = toolkit.getMIDIValuesForElement(id).pitch;
+        if (typeof pitch === 'number') elementPitches.set(toRenderedId(id), pitch);
+      }
+    }
     const elementTimes = new Map<string, number>();
     for (const event of mappedTimeMap) {
       if (event.measureOn && !elementTimes.has(event.measureOn)) {
@@ -253,9 +272,11 @@ export async function renderMusicXmlPages(
           /(<g\s+id="([^"]+)"\s+class="(?:note|measure)"?)/g,
           (match, opening: string, id: string) => {
             const time = elementTimes.get(id);
+            const pitch = elementPitches.get(id);
+            const staff = elementStaffs.get(id);
             return time === undefined
               ? match
-              : `${opening} data-playback-time="${time}"`;
+              : `${opening} data-playback-time="${time}"${pitch !== undefined ? ` data-midi-pitch="${pitch}"` : ''}${staff ? ` data-midi-staff="${staff}"` : ''}`;
           },
         );
       pages.push(svg);

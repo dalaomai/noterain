@@ -43,12 +43,6 @@
   --piano-keyboard-collapsed-height: var(--piano-keyboard-expanded-height);
 }
 
-@media (min-width: 901px) and (hover: hover) and (pointer: fine) {
-  html[data-settings-open='true'] .main-content {
-    margin-right: 292px;
-  }
-}
-
 .empty-state {
   position: absolute;
   inset: 0;

@@ -1,0 +1,309 @@
+.layer {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  z-index: 18;
+  overflow: hidden;
+}
+.mark {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  isolation: isolate;
+}
+.signal {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+}
+.good {
+  --cue: #278474;
+}
+.adjust {
+  --cue: #bd792e;
+}
+.wrong {
+  --cue: #c3425c;
+}
+.wait {
+  --cue: #b48453;
+}
+.muted {
+  --cue: #84909d;
+}
+:global([data-theme='mocha']) .good {
+  --cue: #82cdb4;
+}
+:global([data-theme='mocha']) .adjust {
+  --cue: #efb56d;
+}
+:global([data-theme='mocha']) .wrong {
+  --cue: #f28ba8;
+}
+:global([data-theme='mocha']) .wait {
+  --cue: #ddba8e;
+}
+.ring {
+  position: absolute;
+  width: calc(var(--r, 12px) * 2);
+  height: calc(var(--r, 12px) * 2);
+  left: calc(var(--r, 12px) * -1);
+  top: calc(var(--r, 12px) * -1);
+  border: 1.5px solid var(--cue);
+  border-radius: 50%;
+  background: transparent;
+  transform-origin: center;
+  filter: drop-shadow(0 0 0.8px var(--score-paper));
+}
+.reference {
+  --r: 12px;
+  border: 1px dashed var(--cue);
+  opacity: 0.4;
+}
+.force {
+  --r: var(--actual-radius, 12px);
+}
+.forceIn {
+  animation: force-in 250ms ease-out;
+}
+.early .needle {
+  animation: early-hint 800ms ease-out 2;
+}
+.late .needle {
+  animation: late-hint 800ms ease-out 2;
+}
+.mark[data-timing-compact='true'] .range,
+.mark[data-timing-compact='true'] .zero,
+.mark[data-timing-compact='true'] .spark {
+  display: none;
+}
+.mark[data-timing-compact='true'] .timing:before {
+  display: none;
+}
+.pitchRing {
+  --r: 10px;
+  border-width: 1px;
+  opacity: 0.6;
+}
+.hit {
+  --r: 11px;
+  border-width: 2px;
+  animation: hit 720ms ease-out forwards;
+}
+.breathe {
+  animation: breathe 1800ms ease-in-out infinite;
+}
+.dot {
+  position: absolute;
+  left: 12px;
+  top: -2px;
+  width: 4px;
+  height: 4px;
+  background: var(--cue);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 0.8px var(--score-paper));
+}
+.cross {
+  position: absolute;
+  left: 14px;
+  top: -20px;
+  color: var(--cue);
+  font:
+    600 13px/1 system-ui,
+    sans-serif;
+}
+.spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--cue);
+  animation: spark 550ms ease-out forwards;
+}
+.timing {
+  position: absolute;
+  left: -19px;
+  top: var(--timing-top, -50px);
+  width: 38px;
+  height: 11px;
+}
+.timing:before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--cue);
+  opacity: 0.3;
+}
+.zero {
+  position: absolute;
+  left: 18px;
+  top: 2px;
+  height: 7px;
+  width: 1px;
+  background: var(--cue);
+  opacity: 0.5;
+}
+.range {
+  position: absolute;
+  left: 13px;
+  top: 2px;
+  width: 12px;
+  height: 7px;
+  background: #27847420;
+  border-radius: 2px;
+}
+.needle {
+  position: absolute;
+  left: calc(18px + var(--time-offset, 0px));
+  top: 0;
+  width: 2px;
+  height: 11px;
+  background: var(--cue);
+  border-radius: 2px;
+  filter: drop-shadow(0 0 0.8px var(--score-paper));
+}
+.direction {
+  position: absolute;
+  top: -11px;
+  left: calc(15px + var(--time-offset, 0px));
+  color: var(--cue);
+  font:
+    600 10px/10px system-ui,
+    sans-serif;
+  filter: drop-shadow(0 0 0.8px var(--score-paper));
+}
+.waited:before {
+  display: none;
+}
+.waited .direction {
+  left: 13px;
+  top: 0;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+.forceDirection {
+  position: absolute;
+  left: 18px;
+  top: -5px;
+  font:
+    10px/1 system-ui,
+    sans-serif;
+  color: var(--cue);
+  filter: drop-shadow(0 0 0.8px var(--score-paper));
+}
+.popup {
+  position: absolute;
+  z-index: 19;
+  max-width: min(225px, calc(100% - 16px));
+  padding: 9px 22px 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  box-shadow: 0 3px 12px #30344618;
+  font:
+    11px/1.8 system-ui,
+    sans-serif;
+}
+.popup strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.popup button {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes hit {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(2.05);
+    opacity: 0;
+  }
+}
+@keyframes force-in {
+  from {
+    transform: scale(var(--force-start, 1));
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes early-hint {
+  from {
+    transform: translateX(5px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes late-hint {
+  from {
+    transform: translateX(-5px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+@keyframes spark {
+  from {
+    opacity: 0.8;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mark * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .hit,
+  .spark {
+    display: none;
+  }
+  .breathe {
+    opacity: 0.8;
+  }
+}

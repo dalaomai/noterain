@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useMidiStore } from '../stores/midiStore';
+import { useScoreHistoryStore } from '../stores/scoreHistoryStore';
 import { parseMidiFile, createEmptyMidiFile, exportToMidi } from '../lib/midi/parser';
 import {
   isMusicXmlFileName,
@@ -12,8 +13,17 @@ function isSupportedScoreFile(file: File): boolean {
   return /\.(mid|midi)$/i.test(file.name) || isMusicXmlFileName(file.name);
 }
 
+type ScorePickerWindow = Window & {
+  showOpenFilePicker?: (options: {
+    id: string;
+    multiple: boolean;
+    startIn: 'downloads';
+  }) => Promise<{ getFile(): Promise<File> }[]>;
+};
+
 /** Hook for MIDI file operations */
 export function useMidiFile() {
+  const nativePickerFallbackRef = useRef(false);
   const {
     files,
     currentFileId,
@@ -30,6 +40,7 @@ export function useMidiFile() {
       const midiFile = isMusicXmlFileName(file.name)
         ? await parseMusicXmlFile(file)
         : parseMidiFile(await file.arrayBuffer(), file.name);
+      midiFile.historyId = await useScoreHistoryStore.getState().recordImport(file, midiFile);
       addFile(midiFile);
       setCurrentFile(midiFile.id);
       return midiFile;
@@ -37,18 +48,52 @@ export function useMidiFile() {
     [addFile, setCurrentFile]
   );
 
+  /** Prefer Android's document picker over the media upload chooser. */
+  const handleFilePicker = useCallback(
+    async (e: React.MouseEvent<HTMLInputElement>) => {
+      if (nativePickerFallbackRef.current) return;
+      const pickerWindow = window as ScorePickerWindow;
+      if (!window.isSecureContext || !pickerWindow.showOpenFilePicker) return;
+
+      e.preventDefault();
+      const input = e.currentTarget;
+      let handles;
+      try {
+        // No MIME filters: Android providers may label scores as audio or ZIP.
+        handles = await pickerWindow.showOpenFilePicker({
+          id: 'import-score',
+          multiple: false,
+          startIn: 'downloads',
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        // Some browsers expose the API but block it in the current context.
+        nativePickerFallbackRef.current = true;
+        try {
+          input.click();
+        } finally {
+          nativePickerFallbackRef.current = false;
+        }
+        return;
+      }
+
+      for (const handle of handles) {
+        const file = await handle.getFile();
+        if (isSupportedScoreFile(file)) await loadFile(file);
+      }
+    },
+    [loadFile],
+  );
+
   /** Load a MIDI file from URL */
   const loadFromUrl = useCallback(
     async (url: string, name?: string): Promise<MidiFile> => {
       const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
+      if (!response.ok) throw new Error(`Failed to fetch score: HTTP ${response.status}`);
       const fileName = name || url.split('/').pop() || 'Untitled.mid';
-      const midiFile = parseMidiFile(arrayBuffer, fileName);
-      addFile(midiFile);
-      setCurrentFile(midiFile.id);
-      return midiFile;
+      return loadFile(new File([await response.blob()], fileName));
     },
-    [addFile, setCurrentFile]
+    [loadFile]
   );
 
   /** Create a new empty MIDI file */
@@ -138,6 +183,7 @@ export function useMidiFile() {
     setCurrentFile,
     exportFile,
     handleDrop,
+    handleFilePicker,
     handleFileInput,
   };
 }

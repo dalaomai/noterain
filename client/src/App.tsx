@@ -113,7 +113,7 @@ function App() {
 
       <Controls isLoadingFullVelocity={isLoadingFullVelocity} />
 
-      <div className="main-content">
+      <div className={`main-content${settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
         {settings.showNotesOverlay && <NotesOverlay />}
 
         {currentFile?.sourceFormat === 'musicxml' &&

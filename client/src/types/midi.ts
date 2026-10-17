@@ -40,6 +40,10 @@ export interface MidiFile {
   id: string;
   /** File name */
   name: string;
+  /** Piece title from the source metadata, when available */
+  title?: string;
+  /** Import-history entry associated with the source file */
+  historyId?: string;
   /** Original source format */
   sourceFormat?: 'midi' | 'musicxml';
   /** Original MusicXML text, when imported from an uncompressed score */
@@ -62,6 +66,17 @@ export interface MidiFile {
   rawData?: ArrayBuffer;
   /** When this file was last modified */
   lastModified: number;
+}
+
+/** A locally saved score that can be imported again without a file picker. */
+export interface ScoreHistoryEntry {
+  id: string;
+  fileName: string;
+  title?: string;
+  sourceFormat: 'midi' | 'musicxml';
+  size: number;
+  duration: number;
+  lastImportedAt: number;
 }
 
 /** Tempo change event */
@@ -163,6 +178,10 @@ export interface Settings {
   noteColorMode: NoteColorMode;
   /** Fit keyboard to only show notes in the song */
   fitKeyboardToSong: boolean;
+  /** Keep the piano keyboard expanded without hovering */
+  pinKeyboardExpanded: boolean;
+  /** Keep the screen on while the practice page is visible */
+  keepScreenAwake: boolean;
   /** Play audio when hardware MIDI notes are played */
   playMidiInputAudio: boolean;
   /** Grace period in milliseconds for early note hits in wait mode */
@@ -187,6 +206,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'latte',
   noteColorMode: 'track',
   fitKeyboardToSong: false,
+  pinKeyboardExpanded: false,
+  keepScreenAwake: true,
   playMidiInputAudio: true,
   waitModeGracePeriod: 400,
   showNotesOverlay: false,

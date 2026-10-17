@@ -19,31 +19,35 @@
   will-change: height;
 }
 
-.keyboard:hover,
-.keyboard:focus,
-.keyboard:focus-within {
-  height: clamp(96px, 18vh, 150px);
-  box-shadow: 0 -8px 20px rgb(0 0 0 / 24%);
+@media (hover: hover) and (pointer: fine) {
+  .keyboard:hover,
+  .keyboard:focus-within {
+    height: var(--piano-keyboard-expanded-height, clamp(96px, 18vh, 150px));
+    box-shadow: 0 -8px 20px rgb(0 0 0 / 24%);
+  }
 }
 
 /* Smaller keyboard on mobile */
 @media (max-width: 768px) {
-  .keyboard:hover,
-  .keyboard:focus,
-  .keyboard:focus-within {
-    height: clamp(80px, 16vh, 100px);
-    max-height: 100px;
+  .keyboard {
+    height: clamp(80px, 14vh, 110px);
+    max-height: 110px;
+    transition: box-shadow 160ms ease;
   }
 }
 
 /* Even smaller on very small screens */
 @media (max-height: 500px) {
-  .keyboard:hover,
-  .keyboard:focus,
-  .keyboard:focus-within {
+  .keyboard {
     height: clamp(68px, 20vh, 80px);
     max-height: 80px;
   }
+}
+
+.keyboard.pinned {
+  height: var(--piano-keyboard-expanded-height, clamp(96px, 18vh, 150px));
+  max-height: 150px;
+  box-shadow: 0 -8px 20px rgb(0 0 0 / 24%);
 }
 
 .keyboard::before {

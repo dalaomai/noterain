@@ -2,6 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { WebMidi, NoteMessageEvent, ControlChangeMessageEvent } from 'webmidi';
 import { useMidiStore } from '../stores/midiStore';
 import type { MidiDevice } from '../types/midi';
+import {
+  connectBleMidi,
+  isWebBluetoothSupported,
+  type BleMidiConnection,
+  type BleMidiConnectionState,
+  type BleMidiMessage,
+} from '../lib/midi/bleMidi';
 
 /** MIDI CC number for sustain pedal */
 const SUSTAIN_CC = 64;
@@ -26,9 +33,49 @@ let accessError: string | null = null;
 let enablePromise: Promise<void> | null = null;
 let deviceListenersInstalled = false;
 const accessListeners = new Set<() => void>();
+let bleConnection: BleMidiConnection | null = null;
+let bleConnectionState: BleMidiConnectionState = isWebBluetoothSupported()
+  ? 'idle'
+  : 'unsupported';
+let bleError: string | null = null;
+let bleMessageHandler: ((message: BleMidiMessage) => void) | null = null;
 
 function notifyAccessListeners() {
   accessListeners.forEach((listener) => listener());
+}
+
+async function requestBleMidiConnection(): Promise<void> {
+  if (!isWebBluetoothSupported() || bleConnectionState === 'connecting') return;
+  bleConnectionState = 'connecting';
+  bleError = null;
+  notifyAccessListeners();
+
+  try {
+    bleConnection?.disconnect();
+    bleConnection = await connectBleMidi(
+      (message) => bleMessageHandler?.(message),
+      () => {
+        bleConnection = null;
+        bleConnectionState = 'disconnected';
+        notifyAccessListeners();
+      },
+    );
+    bleConnectionState = 'connected';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    bleError = message;
+    bleConnectionState = /cancel|notfound/i.test(message) ? 'idle' : 'error';
+    throw error;
+  } finally {
+    notifyAccessListeners();
+  }
+}
+
+function disconnectBleMidi() {
+  bleConnection?.disconnect();
+  bleConnection = null;
+  bleConnectionState = isWebBluetoothSupported() ? 'idle' : 'unsupported';
+  notifyAccessListeners();
 }
 
 function updateDevices() {
@@ -159,6 +206,8 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
 
   const [midiAccessState, setMidiAccessState] = useState(accessState);
   const [midiAccessError, setMidiAccessError] = useState(accessError);
+  const [bluetoothState, setBluetoothState] = useState(bleConnectionState);
+  const [bluetoothError, setBluetoothError] = useState(bleError);
 
   // Store callbacks in refs to avoid re-subscribing when callbacks change
   const callbacksRef = useRef(options);
@@ -170,6 +219,8 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
     const update = () => {
       setMidiAccessState(accessState);
       setMidiAccessError(accessError);
+      setBluetoothState(bleConnectionState);
+      setBluetoothError(bleError);
     };
     accessListeners.add(update);
     if (WebMidi.enabled) void requestMidiAccess();
@@ -177,6 +228,31 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
       accessListeners.delete(update);
     };
   }, []);
+
+  useEffect(() => {
+    const handlesMidiMessages = Boolean(
+      options.onNoteOn || options.onNoteOff || options.onSustain,
+    );
+    if (!handlesMidiMessages) return;
+
+    bleMessageHandler = ({ status, data1, data2 }) => {
+      const command = status & 0xf0;
+      if (command === 0x90 && data2 > 0) {
+        setLiveNote(data1, true);
+        addSatisfiedWaitNote(data1);
+        callbacksRef.current.onNoteOn?.(data1, data2);
+      } else if (command === 0x80 || (command === 0x90 && data2 === 0)) {
+        setLiveNote(data1, false);
+        callbacksRef.current.onNoteOff?.(data1);
+      } else if (command === 0xb0 && data1 === SUSTAIN_CC) {
+        callbacksRef.current.onSustain?.(data2 >= 64);
+      }
+    };
+
+    return () => {
+      if (bleMessageHandler) bleMessageHandler = null;
+    };
+  }, [setLiveNote, addSatisfiedWaitNote]);
 
   // Handle input selection and note events
   useEffect(() => {
@@ -247,5 +323,10 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
     accessState: midiAccessState,
     accessError: midiAccessError,
     requestAccess: requestMidiAccess,
+    bluetoothState,
+    bluetoothError,
+    bluetoothDeviceName: bleConnection?.deviceName ?? null,
+    connectBluetooth: requestBleMidiConnection,
+    disconnectBluetooth: disconnectBleMidi,
   };
 }

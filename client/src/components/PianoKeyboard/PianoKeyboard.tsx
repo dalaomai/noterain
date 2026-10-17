@@ -158,7 +158,7 @@ export function PianoKeyboard({
   };
 
   return (
-    <div className={styles.keyboard} tabIndex={0}>
+    <div className={`${styles.keyboard}${settings.pinKeyboardExpanded ? ` ${styles.pinned}` : ''}`}>
       <div className={styles.keysContainer}>
         {/* White keys first (lower z-index) */}
         {keys.whiteKeys.map((key) => renderKey(key, false))}

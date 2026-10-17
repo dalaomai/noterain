@@ -5,6 +5,7 @@ interface VerovioToolkitLike {
   destroy(): void;
   getNotatedIdForElement(xmlId: string): string;
   getPageCount(): number;
+  getMEI(): string;
   loadData(data: string): boolean;
   loadZipDataBuffer(data: ArrayBuffer): boolean;
   renderToMIDI(): string;
@@ -26,10 +27,7 @@ export interface MusicXmlRenderResult {
 }
 
 export type MusicXmlRenderStage =
-  | 'loadingEngine'
-  | 'parsingScore'
-  | 'layingOutScore'
-  | 'renderingPages';
+  'loadingEngine' | 'parsingScore' | 'layingOutScore' | 'renderingPages';
 
 const renderCache = new WeakMap<object, Map<string, MusicXmlRenderResult>>();
 
@@ -117,8 +115,20 @@ export async function parseMusicXmlFile(file: File): Promise<MidiFile> {
     }
 
     const parsed = parseMidiFile(base64ToArrayBuffer(midiBase64), file.name);
+    const metadata = new DOMParser().parseFromString(
+      musicXml ?? toolkit.getMEI(),
+      'application/xml',
+    );
+    const title = [
+      'work > work-title',
+      'movement-title',
+      'meiHead fileDesc titleStmt title',
+    ]
+      .map((selector) => metadata.querySelector(selector)?.textContent?.trim())
+      .find(Boolean);
     return {
       ...parsed,
+      title,
       sourceFormat: 'musicxml',
       musicXml,
       musicXmlCompressed: compressed ? sourceData : undefined,
@@ -219,13 +229,11 @@ export async function renderMusicXmlPages(
     onProgress?.('layingOutScore', 1);
     await yieldToBrowser();
     const mappedTimeMap = timeMap.map((event) => ({
-        ...event,
-        measureOn: event.measureOn
-          ? toRenderedId(event.measureOn)
-          : undefined,
-        off: event.off?.map(toRenderedId),
-        on: event.on?.map(toRenderedId),
-      }));
+      ...event,
+      measureOn: event.measureOn ? toRenderedId(event.measureOn) : undefined,
+      off: event.off?.map(toRenderedId),
+      on: event.on?.map(toRenderedId),
+    }));
     const elementTimes = new Map<string, number>();
     for (const event of mappedTimeMap) {
       if (event.measureOn && !elementTimes.has(event.measureOn)) {
@@ -239,15 +247,17 @@ export async function renderMusicXmlPages(
     const pageCount = toolkit.getPageCount();
     const pages: string[] = [];
     for (let page = 0; page < pageCount; page++) {
-      const svg = toolkit.renderToSVG(page + 1, false).replace(
-        /(<g\s+id="([^"]+)"\s+class="(?:note|measure)"?)/g,
-        (match, opening: string, id: string) => {
-          const time = elementTimes.get(id);
-          return time === undefined
-            ? match
-            : `${opening} data-playback-time="${time}"`;
-        },
-      );
+      const svg = toolkit
+        .renderToSVG(page + 1, false)
+        .replace(
+          /(<g\s+id="([^"]+)"\s+class="(?:note|measure)"?)/g,
+          (match, opening: string, id: string) => {
+            const time = elementTimes.get(id);
+            return time === undefined
+              ? match
+              : `${opening} data-playback-time="${time}"`;
+          },
+        );
       pages.push(svg);
       onProgress?.('renderingPages', (page + 1) / pageCount);
       await yieldToBrowser();

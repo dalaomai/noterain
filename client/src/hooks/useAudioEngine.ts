@@ -2,15 +2,13 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Tone from 'tone';
 import { useMidiStore } from '../stores/midiStore';
 import { getNoteNameFromNumber } from '../types/midi';
+import { loadPianoSample, SAMPLE_NOTES, VELOCITY_LAYERS } from '../utils/offlinePack';
 
 /**
  * Salamander Grand Piano V3 - Multi-velocity sampling
  * 5 velocity layers for realistic dynamics (layers 1, 4, 8, 12, 16)
  * Samples served locally from /samples/piano/
  */
-
-/** Velocity layers to load (1=softest, 16=loudest) */
-const VELOCITY_LAYERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const;
 
 /** Default velocity layer for initial load (medium velocity) */
 const DEFAULT_VELOCITY_LAYER = 8;
@@ -45,20 +43,13 @@ function getBestAvailableLayer(velocity: number, loadedLayers: Set<number>): num
   return nearest;
 }
 
-/** Sample notes available in Salamander (every minor third) */
-const SAMPLE_NOTES = [
-  'A0', 'C1', 'Ds1', 'Fs1', 'A1', 'C2', 'Ds2', 'Fs2', 'A2', 'C3',
-  'Ds3', 'Fs3', 'A3', 'C4', 'Ds4', 'Fs4', 'A4', 'C5', 'Ds5', 'Fs5',
-  'A5', 'C6', 'Ds6', 'Fs6', 'A6', 'C7', 'Ds7', 'Fs7', 'A7', 'C8',
-];
-
 /** Get base URL for a velocity layer */
 function getBaseUrl(velocityLayer: number): string {
   return `/samples/piano/v${velocityLayer}/`;
 }
 
 /** Loading phases */
-type LoadingPhase = 'downloading' | 'decoding' | 'done';
+type LoadingPhase = 'loading' | 'downloading' | 'decoding' | 'done';
 
 /** Hook for audio playback using Tone.js with multi-velocity sampling */
 export function useAudioEngine() {
@@ -70,7 +61,7 @@ export function useAudioEngine() {
   const activeNoteSamplersRef = useRef<Map<number, number>>(new Map());
   const isLoadedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('downloading');
+  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [decodeProgress, setDecodeProgress] = useState(0);
   const loadedCountRef = useRef(0);
@@ -90,6 +81,10 @@ export function useAudioEngine() {
   // Initialize with only the default velocity layer for fast initial load
   useEffect(() => {
     const samplers = new Map<number, Tone.Sampler>();
+    const blobUrls = new Map<string, string>();
+    const abortController = new AbortController();
+    samplersRef.current = samplers;
+    blobUrlCacheRef.current = blobUrls;
     // Reset counters on each mount (important for React Strict Mode)
     loadedCountRef.current = 0;
     isLoadedRef.current = false;
@@ -100,27 +95,30 @@ export function useAudioEngine() {
     const initialSampleCount = SAMPLE_NOTES.length; // Only 30 samples for layer 8
 
     async function loadInitialLayer() {
-      // Phase 1: Download only the default velocity layer
-      console.log(`[AudioEngine] Downloading ${initialSampleCount} samples (layer ${DEFAULT_VELOCITY_LAYER})...`);
+      // Phase 1: Read the default layer from the offline pack, downloading misses.
+      console.log(`[AudioEngine] Loading ${initialSampleCount} samples (layer ${DEFAULT_VELOCITY_LAYER})...`);
 
       const downloadPromises: Promise<void>[] = [];
       const layer = DEFAULT_VELOCITY_LAYER;
 
       for (const note of SAMPLE_NOTES) {
         const url = `${getBaseUrl(layer)}${note}v${layer}.mp3`;
-        const promise = fetch(url)
-          .then(response => {
-            if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-            return response.blob();
-          })
+        const promise = loadPianoSample(url, {
+          signal: abortController.signal,
+          onDownload: () => {
+            if (!aborted) setLoadingPhase('downloading');
+          },
+        })
+          .then(response => response.blob())
           .then(blob => {
             if (aborted) return;
             const blobUrl = URL.createObjectURL(blob);
-            blobUrlCacheRef.current.set(url, blobUrl);
+            blobUrls.set(url, blobUrl);
             downloadedCount++;
             setDownloadProgress(downloadedCount);
           })
           .catch(err => {
+            if (aborted) return;
             console.warn(`[AudioEngine] Failed to download ${url}:`, err);
             downloadedCount++;
             setDownloadProgress(downloadedCount);
@@ -133,14 +131,14 @@ export function useAudioEngine() {
       if (aborted) return;
 
       // Phase 2: Decode the default layer with Tone.js
-      console.log('[AudioEngine] Initial samples downloaded, decoding...');
+      console.log('[AudioEngine] Initial samples loaded, decoding...');
       setLoadingPhase('decoding');
 
       // Build URLs using blob cache
       const urls: Record<string, string> = {};
       for (const note of SAMPLE_NOTES) {
         const originalUrl = `${getBaseUrl(layer)}${note}v${layer}.mp3`;
-        const blobUrl = blobUrlCacheRef.current.get(originalUrl);
+        const blobUrl = blobUrls.get(originalUrl);
         const toneNote = note.replace('Ds', 'D#').replace('Fs', 'F#');
         urls[toneNote] = blobUrl || originalUrl;
       }
@@ -170,16 +168,17 @@ export function useAudioEngine() {
 
     return () => {
       aborted = true;
+      abortController.abort();
       // Abort any ongoing full velocity load
       fullVelocityAbortRef.current?.abort();
-      for (const sampler of samplersRef.current.values()) {
+      for (const sampler of samplers.values()) {
         sampler.dispose();
       }
       // Clean up blob URLs
-      for (const blobUrl of blobUrlCacheRef.current.values()) {
+      for (const blobUrl of blobUrls.values()) {
         URL.revokeObjectURL(blobUrl);
       }
-      blobUrlCacheRef.current.clear();
+      blobUrls.clear();
     };
   }, []);
 
@@ -230,7 +229,7 @@ export function useAudioEngine() {
           return;
         }
 
-        // Download samples for this layer
+        // Read cached samples first for this layer as well.
         const downloadPromises: Promise<void>[] = [];
 
         for (const note of SAMPLE_NOTES) {
@@ -238,11 +237,8 @@ export function useAudioEngine() {
           // Skip if already cached
           if (blobUrlCacheRef.current.has(url)) continue;
 
-          const promise = fetch(url, { signal: abortController.signal })
-            .then(response => {
-              if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-              return response.blob();
-            })
+          const promise = loadPianoSample(url, { signal: abortController.signal })
+            .then(response => response.blob())
             .then(blob => {
               if (abortController.signal.aborted) return;
               const blobUrl = URL.createObjectURL(blob);

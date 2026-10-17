@@ -42,6 +42,7 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
   const result = {
     id: fileId,
     name: fileName,
+    title: extractTitle(parsed),
     sourceFormat: 'midi' as const,
     duration,
     ticksPerBeat,
@@ -63,6 +64,31 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
   });
 
   return result;
+}
+
+/** The first track's sequence name may contain the piece title. */
+function extractTitle(midi: MidiData): string | undefined {
+  const firstTrack = midi.tracks[0] ?? [];
+  const explicit = firstTrack.find(
+    (event) => event.type === 'text' && /^(title|song\s*name|曲名)\s*[:：]/i.test(event.text),
+  );
+  const named = firstTrack.find((event) => event.type === 'trackName');
+  let title = explicit?.type === 'text'
+    ? explicit.text.replace(/^(title|song\s*name|曲名)\s*[:：]\s*/i, '')
+    : named?.type === 'trackName' ? named.text : '';
+  // midi-file exposes text as byte characters; decode UTF-8 names when present.
+  try {
+    title = new TextDecoder('utf-8', { fatal: true }).decode(
+      Uint8Array.from(title, (character) => character.charCodeAt(0)),
+    );
+  } catch { /* Keep legacy single-byte names as read. */ }
+  title = Array.from(title)
+    .filter((character) => character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127)
+    .join('').trim();
+  if (!title || /^(track\s*\d*|untitled|piano|acoustic grand piano|melody|bass|drums?|guitar|strings|conductor(?: track)?|tempo(?: track)?)$/i.test(title)) {
+    return undefined;
+  }
+  return title;
 }
 
 /** Extract tempo changes from MIDI data */

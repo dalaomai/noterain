@@ -6,6 +6,16 @@ export const en = {
   // File controls
   openMidi: 'Import score',
   selectFile: 'Select file...',
+  scoreHistory: 'Import history',
+  scoreHistoryDescription: 'Saved in this browser. Select a score to load it again, even offline.',
+  closeHistory: 'Close import history',
+  historyEmpty: 'No import history yet. Imported scores will appear here.',
+  historyLoading: 'Loading scores...',
+  loadHistoryScore: 'Load {name}',
+  removeHistoryScore: 'Remove {name} from history',
+  historyImportError: 'Could not load this saved score. Please import the original file again.',
+  historySaveError: 'The score is loaded, but its import history could not be saved.',
+  historyStorageError: 'Could not access local history. Close other NoteRain tabs and try again.',
 
   // Playback
   muteAudio: 'Mute audio',
@@ -15,6 +25,11 @@ export const en = {
   switchToDarkTheme: 'Switch to dark theme',
   hideControls: 'Hide controls',
   showControls: 'Show controls',
+  showToolbar: 'Show toolbar',
+  enterFullscreen: 'Fullscreen (landscape)',
+  exitFullscreen: 'Exit fullscreen',
+  fullscreenError: 'The browser did not switch fullscreen. Tap the fullscreen button to retry.',
+  rotateForFullscreen: 'Rotate your device to landscape for a larger view.',
 
   // View modes
   fallingNotes: 'Falling Notes',
@@ -29,6 +44,22 @@ export const en = {
   expandRepeats: 'Expand repeats',
 
   // Settings
+  theme: 'Theme',
+  displaySettings: 'Display & score',
+  keyboardSettings: 'Keyboard',
+  practiceSettings: 'Practice & playback',
+  keepScreenAwake: 'Keep screen awake',
+  keepScreenAwakeDescription: 'Keep the screen on while this page is visible, including pauses to read the score.',
+  screenWakeLockActive: 'Screen awake',
+  screenWakeLockRequesting: 'Enabling...',
+  screenWakeLockUnsupported: 'Screen wake lock is unavailable in this browser or connection. Try HTTPS.',
+  screenWakeLockError: 'Could not keep the screen awake. Check browser permissions or power saving settings.',
+  retryScreenWakeLock: 'Retry',
+  trackSettings: 'Tracks',
+  deviceSettings: 'MIDI devices',
+  audioSettings: 'Audio & offline',
+  generalSettings: 'General',
+  pinKeyboardExpanded: 'Keep keyboard expanded',
   waitForInput: 'Wait for input',
   grace: 'Grace:',
   fitKeyboardToSong: 'Fit keyboard to song',
@@ -49,6 +80,11 @@ export const en = {
   midiUnsupported: 'Web MIDI is not supported',
   midiRequiresHttps: 'HTTPS is required for MIDI',
   midiAccessError: 'Could not enable MIDI. Try again',
+  connectBluetoothMidi: 'Bluetooth MIDI',
+  connectingBluetoothMidi: 'Connecting Bluetooth...',
+  disconnectBluetoothMidi: 'Disconnect Bluetooth MIDI',
+  bluetoothMidiConnected: 'Bluetooth: {device}',
+  bluetoothMidiError: 'Bluetooth MIDI failed. Try again',
   noDevices: 'No devices',
   none: 'None',
 
@@ -76,6 +112,7 @@ export const en = {
   failedCount: '{count} failed',
 
   // Loading screen
+  loadingPianoSamples: 'Loading Piano Samples',
   downloadingPianoSamples: 'Downloading Piano Samples',
   decodingPianoSamples: 'Decoding Piano Samples',
   samplesProgress: '{progress} / {total} samples',
@@ -94,6 +131,7 @@ export const en = {
 
   // Language
   language: 'Language:',
+  settings: 'Settings',
 } as const;
 
 export type TranslationKeys = keyof typeof en;
@@ -103,6 +141,16 @@ export const zh: Record<TranslationKeys, string> = {
   // File controls
   openMidi: '导入乐曲',
   selectFile: '选择文件...',
+  scoreHistory: '导入历史',
+  scoreHistoryDescription: '记录保存在当前浏览器中，点击乐曲即可重新载入，离线也可使用。',
+  closeHistory: '关闭导入历史',
+  historyEmpty: '暂无导入记录，导入乐曲后会自动保存在这里。',
+  historyLoading: '正在载入乐曲...',
+  loadHistoryScore: '载入 {name}',
+  removeHistoryScore: '从历史记录移除 {name}',
+  historyImportError: '无法载入这条记录，请重新导入原始文件。',
+  historySaveError: '乐曲已载入，但导入历史保存失败。',
+  historyStorageError: '无法读取本地历史，请关闭其他 NoteRain 标签页后重试。',
 
   // Playback
   muteAudio: '静音',
@@ -112,6 +160,11 @@ export const zh: Record<TranslationKeys, string> = {
   switchToDarkTheme: '切换到深色主题',
   hideControls: '隐藏控制栏',
   showControls: '显示控制栏',
+  showToolbar: '显示顶部栏',
+  enterFullscreen: '全屏（自动横屏）',
+  exitFullscreen: '退出全屏',
+  fullscreenError: '浏览器未能切换全屏，请再次点击全屏按钮重试。',
+  rotateForFullscreen: '浏览器无法自动横屏，请将设备旋转至横屏。',
 
   // View modes
   fallingNotes: '下落音符',
@@ -126,6 +179,22 @@ export const zh: Record<TranslationKeys, string> = {
   expandRepeats: '展开反复',
 
   // Settings
+  theme: '主题',
+  displaySettings: '显示与乐谱',
+  keyboardSettings: '键盘',
+  practiceSettings: '练习与播放',
+  keepScreenAwake: '保持屏幕常亮',
+  keepScreenAwakeDescription: '页面在前台时保持常亮，暂停读谱时也适用。',
+  screenWakeLockActive: '常亮已启用',
+  screenWakeLockRequesting: '正在启用...',
+  screenWakeLockUnsupported: '当前浏览器或连接不支持屏幕常亮，请使用 HTTPS 访问。',
+  screenWakeLockError: '未能保持常亮，请检查浏览器权限或省电设置。',
+  retryScreenWakeLock: '重试',
+  trackSettings: '音轨',
+  deviceSettings: 'MIDI 设备',
+  audioSettings: '音频与离线',
+  generalSettings: '通用',
+  pinKeyboardExpanded: '固定展开键盘',
   waitForInput: '跟弹模式',
   grace: '提前容差：',
   fitKeyboardToSong: '按乐曲范围显示键盘',
@@ -146,6 +215,11 @@ export const zh: Record<TranslationKeys, string> = {
   midiUnsupported: '当前浏览器不支持 Web MIDI',
   midiRequiresHttps: 'MIDI 需要 HTTPS 安全连接',
   midiAccessError: '无法启用 MIDI，点击重试',
+  connectBluetoothMidi: '连接蓝牙 MIDI',
+  connectingBluetoothMidi: '正在连接蓝牙 MIDI...',
+  disconnectBluetoothMidi: '断开蓝牙 MIDI',
+  bluetoothMidiConnected: '蓝牙：{device}',
+  bluetoothMidiError: '蓝牙 MIDI 连接失败，点击重试',
   noDevices: '未检测到设备',
   none: '不选择',
 
@@ -173,6 +247,7 @@ export const zh: Record<TranslationKeys, string> = {
   failedCount: '{count} 个失败',
 
   // Loading screen
+  loadingPianoSamples: '正在读取钢琴采样',
   downloadingPianoSamples: '正在下载钢琴采样',
   decodingPianoSamples: '正在解码钢琴采样',
   samplesProgress: '{progress} / {total} 个采样',
@@ -191,6 +266,7 @@ export const zh: Record<TranslationKeys, string> = {
 
   // Language
   language: '语言：',
+  settings: '设置',
 };
 
 /** All locale dictionaries */

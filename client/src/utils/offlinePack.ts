@@ -5,9 +5,45 @@
  * for both the app and the SW runtime caching.
  */
 
-import { version } from '../../../package.json';
+import { version } from '../../package.json';
 
 export const SAMPLES_CACHE_NAME = `piano-samples-local-v${version}`;
+
+/** Read the offline pack directly, even without a controlling service worker. */
+export async function loadPianoSample(
+  url: string,
+  options: { signal?: AbortSignal; onDownload?: () => void } = {},
+): Promise<Response> {
+  const { signal, onDownload } = options;
+  let cache: Cache | undefined;
+  try {
+    if (typeof caches !== 'undefined') {
+      cache = await caches.open(SAMPLES_CACHE_NAME);
+      const cached = await cache.match(url);
+      if (cached?.ok) return cached;
+    }
+  } catch {
+    // Cache Storage may be unavailable; samples can still be loaded online.
+    cache = undefined;
+  }
+
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException('Aborted', 'AbortError');
+  }
+  onDownload?.();
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+
+  if (cache) {
+    try {
+      await cache.put(url, response.clone());
+    } catch (error) {
+      // A storage quota failure should not prevent playback of downloaded audio.
+      console.warn(`[AudioEngine] Failed to cache ${url}:`, error);
+    }
+  }
+  return response;
+}
 
 /** Velocity layers (1=softest, 16=loudest) */
 export const VELOCITY_LAYERS = Array.from({ length: 16 }, (_, i) => i + 1);

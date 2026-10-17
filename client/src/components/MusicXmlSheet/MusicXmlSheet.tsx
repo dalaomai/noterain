@@ -16,6 +16,42 @@ const STAGE_LABELS: Record<MusicXmlRenderStage, TranslationKeys> = {
   renderingPages: 'musicXmlRenderingPages',
 };
 
+/** Keep both piano staves visible instead of centering an individual note. */
+function scrollScoreSystemIntoView(
+  container: HTMLDivElement,
+  element: SVGElement,
+  force = false,
+) {
+  const system = element.closest('.system') ?? element;
+  const systemRect = system.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const toolbar = document.getElementById('playback-toolbar');
+  const toolbarBottom =
+    toolbar && !toolbar.inert
+      ? (toolbar.parentElement?.getBoundingClientRect().top ?? 0) +
+        toolbar.offsetTop +
+        toolbar.offsetHeight
+      : containerRect.top;
+  const visibleTop = Math.max(containerRect.top, toolbarBottom) + 8;
+  const visibleBottom = containerRect.bottom - 8;
+
+  if (
+    !force &&
+    systemRect.top >= visibleTop &&
+    systemRect.bottom <= visibleBottom
+  )
+    return;
+
+  const top = Math.max(0, container.scrollTop + systemRect.top - visibleTop);
+  if (Math.abs(top - container.scrollTop) < 1) return;
+  container.scrollTo({
+    top,
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth',
+  });
+}
+
 export function MusicXmlSheet() {
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightsRef = useRef<HTMLDivElement>(null);
@@ -125,15 +161,19 @@ export function MusicXmlSheet() {
       const note = target?.closest<SVGGElement>('.note');
       if (!note || !container.contains(note)) return;
       const directTime = note.dataset.playbackTime;
-      let time = directTime === undefined ? noteTimes.get(note.id) : Number(directTime);
+      let time =
+        directTime === undefined ? noteTimes.get(note.id) : Number(directTime);
 
       if (time === undefined) {
         const measure = note.closest<SVGGElement>('.measure');
-        const noteCenter = note.getBoundingClientRect().left +
+        const noteCenter =
+          note.getBoundingClientRect().left +
           note.getBoundingClientRect().width / 2;
         let closestDistance = Number.POSITIVE_INFINITY;
 
-        for (const candidate of measure?.querySelectorAll<SVGGElement>('.note') ?? []) {
+        for (const candidate of measure?.querySelectorAll<SVGGElement>(
+          '.note',
+        ) ?? []) {
           const candidateTime = noteTimes.get(candidate.id);
           if (candidateTime === undefined) continue;
           const rect = candidate.getBoundingClientRect();
@@ -146,15 +186,16 @@ export function MusicXmlSheet() {
 
         if (time === undefined && measure) {
           const measureTime = measure.dataset.playbackTime;
-          time = measureTime === undefined
-            ? measureTimes.get(measure.id)
-            : Number(measureTime);
+          time =
+            measureTime === undefined
+              ? measureTimes.get(measure.id)
+              : Number(measureTime);
         }
       }
 
       if (time === undefined) return;
       useMidiStore.getState().seek(time);
-      note.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrollScoreSystemIntoView(container, note, true);
     },
     [measureTimes, noteTimes],
   );
@@ -164,10 +205,15 @@ export function MusicXmlSheet() {
     if (!container || pages.length === 0 || timeMap.length === 0) return;
 
     let animationFrame = 0;
+    let followedSystem: Element | null = null;
+    const toolbar = document.getElementById('playback-toolbar');
+    let toolbarWasCollapsed = toolbar?.inert;
 
     const clearHighlights = () => {
       for (const id of activeIdsRef.current) {
-        container.querySelector(`#${CSS.escape(id)}`)?.classList.remove(styles.playing);
+        container
+          .querySelector(`#${CSS.escape(id)}`)
+          ?.classList.remove(styles.playing);
       }
       activeIdsRef.current.clear();
       highlightsRef.current?.replaceChildren();
@@ -190,7 +236,11 @@ export function MusicXmlSheet() {
         }
       }
 
-      if (eventIndex !== eventIndexRef.current) {
+      const eventChanged = eventIndex !== eventIndexRef.current;
+      const toolbarChanged = toolbar?.inert !== toolbarWasCollapsed;
+      toolbarWasCollapsed = toolbar?.inert;
+
+      if (eventChanged) {
         clearHighlights();
         eventIndexRef.current = eventIndex;
 
@@ -198,7 +248,9 @@ export function MusicXmlSheet() {
           const frame = playbackFrames[eventIndex];
           const ids = frame.activeIds;
           for (const id of ids) {
-            const element = container.querySelector<SVGElement>(`#${CSS.escape(id)}`);
+            const element = container.querySelector<SVGElement>(
+              `#${CSS.escape(id)}`,
+            );
             if (!element) continue;
             element.classList.add(styles.playing);
             activeIdsRef.current.add(id);
@@ -213,21 +265,25 @@ export function MusicXmlSheet() {
             highlight.style.height = `${Math.max(24, noteRect.height + 12)}px`;
             highlightsRef.current?.appendChild(highlight);
           }
+        }
+      }
 
-          const focusId = ids[0] ?? frame.measureId;
-          const focusElement = focusId
-            ? container.querySelector<SVGElement>(`#${CSS.escape(focusId)}`)
-            : null;
-          if (isPlaying && focusElement) {
-            const noteRect = focusElement.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            if (
-              noteRect.top < containerRect.top + 32 ||
-              noteRect.bottom > containerRect.bottom - 48
-            ) {
-              focusElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }
+      if (isPlaying && eventIndex >= 0 && (eventChanged || toolbarChanged)) {
+        const frame = playbackFrames[eventIndex];
+        const focusId = frame.activeIds[0] ?? frame.measureId;
+        const focusElement = focusId
+          ? container.querySelector<SVGElement>(`#${CSS.escape(focusId)}`)
+          : null;
+        if (focusElement) {
+          const system = focusElement.closest('.system') ?? focusElement;
+          // Short viewports need room below the current system for reading ahead.
+          scrollScoreSystemIntoView(
+            container,
+            focusElement,
+            (system !== followedSystem || toolbarChanged) &&
+              container.clientHeight <= 500,
+          );
+          followedSystem = system;
         }
       }
 
@@ -253,9 +309,7 @@ export function MusicXmlSheet() {
       {!error && pages.length === 0 && (
         <div className={styles.status}>
           <div className={styles.statusContent}>
-            <div>
-              {t(STAGE_LABELS[renderProgress.stage])}
-            </div>
+            <div>{t(STAGE_LABELS[renderProgress.stage])}</div>
             <progress value={renderProgress.progress} max={1} />
             <div className={styles.progressText}>
               {Math.round(renderProgress.progress * 100)}%

@@ -14,6 +14,9 @@
   --piano-keyboard-collapsed-height: 44px;
   --piano-keyboard-expanded-height: clamp(96px, 18vh, 150px);
 
+  /* Keep falling notes directly above the keyboard as its height changes. */
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   flex: 1;
   min-height: 0;
   position: relative;

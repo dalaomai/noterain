@@ -1,8 +1,16 @@
 import { useCallback } from 'react';
 import { useMidiStore } from '../stores/midiStore';
 import { parseMidiFile, createEmptyMidiFile, exportToMidi } from '../lib/midi/parser';
+import {
+  isMusicXmlFileName,
+  parseMusicXmlFile,
+} from '../lib/musicxml/parser';
 import { removeRawMidiData } from '../utils/storage';
 import type { MidiFile } from '../types/midi';
+
+function isSupportedScoreFile(file: File): boolean {
+  return /\.(mid|midi)$/i.test(file.name) || isMusicXmlFileName(file.name);
+}
 
 /** Hook for MIDI file operations */
 export function useMidiFile() {
@@ -19,8 +27,9 @@ export function useMidiFile() {
   /** Load a MIDI file from File object */
   const loadFile = useCallback(
     async (file: File): Promise<MidiFile> => {
-      const arrayBuffer = await file.arrayBuffer();
-      const midiFile = parseMidiFile(arrayBuffer, file.name);
+      const midiFile = isMusicXmlFileName(file.name)
+        ? await parseMusicXmlFile(file)
+        : parseMidiFile(await file.arrayBuffer(), file.name);
       addFile(midiFile);
       setCurrentFile(midiFile.id);
       return midiFile;
@@ -90,7 +99,7 @@ export function useMidiFile() {
     async (e: React.DragEvent) => {
       e.preventDefault();
       const droppedFiles = Array.from(e.dataTransfer.files).filter(
-        (f) => f.name.endsWith('.mid') || f.name.endsWith('.midi')
+        isSupportedScoreFile,
       );
 
       for (const file of droppedFiles) {
@@ -104,7 +113,7 @@ export function useMidiFile() {
   const handleFileInput = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFiles = Array.from(e.target.files || []).filter(
-        (f) => f.name.endsWith('.mid') || f.name.endsWith('.midi')
+        isSupportedScoreFile,
       );
 
       for (const file of selectedFiles) {

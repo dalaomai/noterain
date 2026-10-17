@@ -27,3 +27,4 @@ certs/
 
 # Deployment
 .history
+.temp

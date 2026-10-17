@@ -4,7 +4,7 @@ export type Locale = 'en' | 'zh';
 /** English strings (source of truth) */
 export const en = {
   // File controls
-  openMidi: 'Open MIDI',
+  openMidi: 'Import score',
   selectFile: 'Select file...',
 
   // Playback
@@ -19,6 +19,14 @@ export const en = {
   // View modes
   fallingNotes: 'Falling Notes',
   sheetMusic: 'Sheet Music',
+  scoreMode: 'Score:',
+  originalScore: 'Original',
+  simplifiedScore: 'Simplified',
+  scoreDensity: 'Density:',
+  scoreDensityRelaxed: 'Relaxed',
+  scoreDensityStandard: 'Standard',
+  scoreDensityCompact: 'Compact',
+  expandRepeats: 'Expand repeats',
 
   // Settings
   waitForInput: 'Wait for input',
@@ -67,8 +75,16 @@ export const en = {
   samplesProgress: '{progress} / {total} samples',
   velocityLayersProgress: '{progress} / {total} velocity layers',
 
+  // MusicXML
+  loadingMusicXml: 'Loading MusicXML score...',
+  musicXmlRenderError: 'Unable to render MusicXML score',
+  musicXmlLoadingEngine: 'Loading notation engine',
+  musicXmlParsingScore: 'Reading MusicXML score',
+  musicXmlLayingOutScore: 'Laying out notation',
+  musicXmlRenderingPages: 'Rendering pages',
+
   // Empty state
-  emptyState: 'Drop a MIDI file here or click "Open MIDI" to get started',
+  emptyState: 'Drop a MIDI or MusicXML score here, or click "Import score"',
 
   // Language
   language: 'Language:',
@@ -79,7 +95,7 @@ export type TranslationKeys = keyof typeof en;
 /** Chinese (Simplified) strings */
 export const zh: Record<TranslationKeys, string> = {
   // File controls
-  openMidi: '打开 MIDI',
+  openMidi: '导入乐曲',
   selectFile: '选择文件...',
 
   // Playback
@@ -94,6 +110,14 @@ export const zh: Record<TranslationKeys, string> = {
   // View modes
   fallingNotes: '下落音符',
   sheetMusic: '五线谱',
+  scoreMode: '乐谱：',
+  originalScore: '原谱',
+  simplifiedScore: '简化谱',
+  scoreDensity: '乐谱密度：',
+  scoreDensityRelaxed: '宽松',
+  scoreDensityStandard: '标准',
+  scoreDensityCompact: '紧凑',
+  expandRepeats: '展开反复',
 
   // Settings
   waitForInput: '跟弹模式',
@@ -142,8 +166,16 @@ export const zh: Record<TranslationKeys, string> = {
   samplesProgress: '{progress} / {total} 个采样',
   velocityLayersProgress: '{progress} / {total} 个力度分层',
 
+  // MusicXML
+  loadingMusicXml: '正在载入 MusicXML 乐谱...',
+  musicXmlRenderError: '无法渲染 MusicXML 乐谱',
+  musicXmlLoadingEngine: '正在载入乐谱引擎',
+  musicXmlParsingScore: '正在读取 MusicXML 乐谱',
+  musicXmlLayingOutScore: '正在计算乐谱排版',
+  musicXmlRenderingPages: '正在渲染乐谱页面',
+
   // Empty state
-  emptyState: '将 MIDI 文件拖到此处，或点击“打开 MIDI”开始',
+  emptyState: '将 MIDI 或 MusicXML 乐谱拖到此处，或点击“导入乐曲”',
 
   // Language
   language: '语言：',

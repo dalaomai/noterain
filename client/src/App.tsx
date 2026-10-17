@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Controls } from './components/Controls/Controls';
 import { FallingNotes } from './components/FallingNotes/FallingNotes';
 import { LoadingScreen } from './components/LoadingScreen/LoadingScreen';
+import { MusicXmlSheet } from './components/MusicXmlSheet/MusicXmlSheet';
 import { NotesOverlay } from './components/NotesOverlay/NotesOverlay';
 import { SheetMusic } from './components/SheetMusic/SheetMusic';
 import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
@@ -115,7 +116,16 @@ function App() {
       <div className="main-content">
         {settings.showNotesOverlay && <NotesOverlay />}
 
-        {currentFile && settings.showSheetMusic && (
+        {currentFile?.sourceFormat === 'musicxml' &&
+          settings.showSheetMusic &&
+          settings.showOriginalMusicXml && (
+          <MusicXmlSheet key={currentFile.id} />
+        )}
+
+        {currentFile &&
+          settings.showSheetMusic &&
+          (currentFile.sourceFormat !== 'musicxml' ||
+            !settings.showOriginalMusicXml) && (
           <SheetMusic key={currentFile.id} />
         )}
 
@@ -128,14 +138,14 @@ function App() {
             <p>{t('emptyState')}</p>
           </div>
         )}
-      </div>
 
-      <PianoKeyboard
-        onNoteOn={handleNoteOn}
-        onNoteOff={handleNoteOff}
-        minNote={minNote}
-        maxNote={maxNote}
-      />
+        <PianoKeyboard
+          onNoteOn={handleNoteOn}
+          onNoteOff={handleNoteOff}
+          minNote={minNote}
+          maxNote={maxNote}
+        />
+      </div>
     </div>
   );
 }

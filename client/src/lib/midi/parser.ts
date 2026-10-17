@@ -42,6 +42,7 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
   const result = {
     id: fileId,
     name: fileName,
+    sourceFormat: 'midi' as const,
     duration,
     ticksPerBeat,
     tempos,

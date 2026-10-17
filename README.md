@@ -75,7 +75,9 @@ A modern web-based MIDI player and piano learning tool with falling notes visual
 - **Latte** - Light theme based on Catppuccin Latte
 
 ### File Management
-- Open MIDI files via file picker or drag-and-drop
+- Import MIDI (`.mid`, `.midi`) and MusicXML (`.musicxml`, `.xml`, `.mxl`) via file picker or drag-and-drop
+- Preserve MusicXML notation details such as voices, rests, ties, beams, articulations, and enharmonic spelling
+- Convert MusicXML to the existing playback model for falling notes, audio playback, looping, and wait mode
 - Multiple file support with easy switching
 - Export to MIDI
 - Persistent settings (theme, volume, colors, MIDI device)

@@ -1,28 +1,47 @@
 .keyboard {
-  position: relative;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
   width: 100%;
-  height: 12vh;
-  min-height: 80px;
+  height: var(--piano-keyboard-collapsed-height, 44px);
   max-height: 150px;
   background: var(--ctp-crust);
   overflow: hidden;
   user-select: none;
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -2px 6px rgb(0 0 0 / 14%);
+  outline: none;
+  transition:
+    height 220ms ease,
+    box-shadow 220ms ease;
+  will-change: height;
+}
+
+.keyboard:hover,
+.keyboard:focus,
+.keyboard:focus-within {
+  height: clamp(96px, 18vh, 150px);
+  box-shadow: 0 -8px 20px rgb(0 0 0 / 24%);
 }
 
 /* Smaller keyboard on mobile */
 @media (max-width: 768px) {
-  .keyboard {
-    height: 10vh;
-    min-height: 60px;
+  .keyboard:hover,
+  .keyboard:focus,
+  .keyboard:focus-within {
+    height: clamp(80px, 16vh, 100px);
     max-height: 100px;
   }
 }
 
 /* Even smaller on very small screens */
 @media (max-height: 500px) {
-  .keyboard {
-    height: 15vh;
-    min-height: 50px;
+  .keyboard:hover,
+  .keyboard:focus,
+  .keyboard:focus-within {
+    height: clamp(68px, 20vh, 80px);
     max-height: 80px;
   }
 }

@@ -531,6 +531,17 @@ export const useMidiStore = create<MidiStore>()(
     }),
     {
       name: 'piano-storage',
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<MidiStore>;
+        return {
+          ...currentState,
+          ...persisted,
+          settings: {
+            ...DEFAULT_SETTINGS,
+            ...persisted.settings,
+          },
+        };
+      },
       partialize: (state) => ({
         // Don't persist files - they contain too much note data and exceed localStorage quota
         selectedInputId: state.selectedInputId,

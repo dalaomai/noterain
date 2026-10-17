@@ -40,6 +40,12 @@ export interface MidiFile {
   id: string;
   /** File name */
   name: string;
+  /** Original source format */
+  sourceFormat?: 'midi' | 'musicxml';
+  /** Original MusicXML text, when imported from an uncompressed score */
+  musicXml?: string;
+  /** Original compressed MusicXML data, when imported from an .mxl score */
+  musicXmlCompressed?: ArrayBuffer;
   /** Duration in seconds */
   duration: number;
   /** Ticks per quarter note (PPQ) */
@@ -124,6 +130,9 @@ export type Theme = 'mocha' | 'latte';
 /** Note coloring mode */
 export type NoteColorMode = 'track' | 'pitch';
 
+/** MusicXML notation density */
+export type ScoreDensity = 'relaxed' | 'standard' | 'compact';
+
 /** App settings */
 export interface Settings {
   /** Master volume (0-1) */
@@ -136,6 +145,12 @@ export interface Settings {
   rightHandColor: string;
   /** Show sheet music view */
   showSheetMusic: boolean;
+  /** Prefer the original MusicXML engraving instead of inferred notation */
+  showOriginalMusicXml: boolean;
+  /** MusicXML engraving density */
+  scoreDensity: ScoreDensity;
+  /** Expand repeats and endings into linear playback order */
+  expandMusicXmlRepeats: boolean;
   /** Show falling notes view */
   showFallingNotes: boolean;
   /** Metronome enabled */
@@ -163,6 +178,9 @@ export const DEFAULT_SETTINGS: Settings = {
   leftHandColor: '#89b4fa', // Catppuccin blue
   rightHandColor: '#a6e3a1', // Catppuccin green
   showSheetMusic: false,
+  showOriginalMusicXml: true,
+  scoreDensity: 'standard',
+  expandMusicXmlRepeats: false,
   showFallingNotes: true,
   metronomeEnabled: false,
   scrollSpeed: 1,

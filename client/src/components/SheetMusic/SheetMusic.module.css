@@ -1,11 +1,13 @@
 .container {
   position: absolute;
-  inset: 0;
-  overflow: auto;
+  inset: 0 0 var(--piano-keyboard-collapsed-height, 44px);
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--canvas-bg);
   display: flex;
   justify-content: center;
   scroll-snap-type: y mandatory;
+  box-sizing: border-box;
 }
 
 .snapPoint {
@@ -19,12 +21,14 @@
 
 .svgContainer {
   position: relative;
+  width: 100%;
   min-height: 100%;
   flex-shrink: 0;
 }
 
 .svgContainer svg {
   display: block;
+  max-width: 100%;
 }
 
 /* Style VexFlow SVG elements based on theme - matching NotesOverlay */

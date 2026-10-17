@@ -647,6 +647,7 @@ export function SheetMusic({
   const highlightsRef = useRef<HTMLDivElement>(null);
   const progressLineRef = useRef<HTMLDivElement>(null);
   const [renderedHeight, setRenderedHeight] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(1200);
 
   // Store note positions for highlighting
   const notePositionsRef = useRef<NotePosition[]>([]);
@@ -686,6 +687,23 @@ export function SheetMusic({
 
   const getPlaybackTime = useCallback(() => {
     return useMidiStore.getState().playback.currentTime;
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateWidth = () => {
+      const nextWidth = Math.max(320, Math.floor(container.clientWidth) - 2);
+      setViewportWidth((current) =>
+        Math.abs(current - nextWidth) >= 2 ? nextWidth : current,
+      );
+    };
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(container);
+    updateWidth();
+    return () => observer.disconnect();
   }, []);
 
   // Render sheet music
@@ -761,7 +779,7 @@ export function SheetMusic({
     const measureCount = trackMeasures[0]?.measures.length || 0;
 
     // Layout constants
-    const totalAvailableWidth = 1200;
+    const totalAvailableWidth = viewportWidth;
     const leftMargin = 20;
     const singleStaveHeight = 80;
     const trackSpacing = 20;
@@ -1198,7 +1216,7 @@ export function SheetMusic({
     container.dataset.trackCount = String(enabledTracks.length);
     container.dataset.singleStaveHeight = String(singleStaveHeight);
     container.dataset.lineCount = String(lines.length);
-  }, [currentFile, beatsPerMeasureProp, theme]);
+  }, [currentFile, beatsPerMeasureProp, theme, viewportWidth]);
 
   // Scroll-to-seek: convert scroll position to playback time (only when paused)
   const handleScroll = useCallback(() => {

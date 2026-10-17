@@ -113,7 +113,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".mid,.midi"
+              accept=".mid,.midi,.musicxml,.xml,.mxl"
               onChange={handleFileInput}
               style={{ display: 'none' }}
             />
@@ -261,6 +261,60 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               {t('sheetMusic')}
             </button>
           </div>
+
+          {currentFile?.sourceFormat === 'musicxml' && settings.showSheetMusic && (
+            <div className={styles.gridItem}>
+              <label className={styles.label}>{t('scoreMode')}</label>
+              <button
+                className={`${styles.button} ${settings.showOriginalMusicXml ? styles.active : ''}`}
+                onClick={() => updateSettings({ showOriginalMusicXml: true })}
+              >
+                {t('originalScore')}
+              </button>
+              <button
+                className={`${styles.button} ${!settings.showOriginalMusicXml ? styles.active : ''}`}
+                onClick={() => updateSettings({ showOriginalMusicXml: false })}
+              >
+                {t('simplifiedScore')}
+              </button>
+            </div>
+          )}
+
+          {currentFile?.sourceFormat === 'musicxml' &&
+            settings.showSheetMusic &&
+            settings.showOriginalMusicXml && (
+              <div className={styles.gridItem}>
+                <label className={styles.label}>{t('scoreDensity')}</label>
+                <select
+                  className={styles.select}
+                  value={settings.scoreDensity}
+                  onChange={(event) =>
+                    updateSettings({
+                      scoreDensity: event.target.value as
+                        | 'relaxed'
+                        | 'standard'
+                        | 'compact',
+                    })
+                  }
+                >
+                  <option value="relaxed">{t('scoreDensityRelaxed')}</option>
+                  <option value="standard">{t('scoreDensityStandard')}</option>
+                  <option value="compact">{t('scoreDensityCompact')}</option>
+                </select>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={settings.expandMusicXmlRepeats}
+                    onChange={() =>
+                      updateSettings({
+                        expandMusicXmlRepeats: !settings.expandMusicXmlRepeats,
+                      })
+                    }
+                  />
+                  {t('expandRepeats')}
+                </label>
+              </div>
+            )}
 
           {/* Wait mode toggle */}
           <div className={styles.gridItem}>

@@ -8,10 +8,14 @@
 }
 
 .main-content {
+  --piano-keyboard-collapsed-height: 44px;
+
   flex: 1;
   min-height: 0;
   position: relative;
   overflow: hidden;
+  isolation: isolate;
+  z-index: 0;
 }
 
 .empty-state {

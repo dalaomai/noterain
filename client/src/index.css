@@ -51,6 +51,10 @@
   /* Sheet music colors (matching NotesOverlay) */
   --sheet-note-color: #cdd6f4;
   --sheet-stave-color: #6c7086;
+  --score-paper: #21252b;
+  --score-ink: #cdd6f4;
+  --score-ink-muted: #8b95a7;
+  --score-page-shadow: rgb(0 0 0 / 42%);
 }
 
 /* Catppuccin Latte (Light) */
@@ -100,6 +104,10 @@
   /* Sheet music colors (matching NotesOverlay) */
   --sheet-note-color: #4c4f69;
   --sheet-stave-color: #9ca0b0;
+  --score-paper: #fff;
+  --score-ink: #303446;
+  --score-ink-muted: #6c6f85;
+  --score-page-shadow: rgb(76 79 105 / 20%);
 }
 
 html,

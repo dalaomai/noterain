@@ -1,0 +1,121 @@
+.container {
+  position: absolute;
+  inset: 0 0 var(--piano-keyboard-collapsed-height, 44px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--canvas-bg);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1200px);
+  margin: 0 auto 16px;
+  background: var(--score-paper);
+  box-shadow: 0 2px 8px var(--score-page-shadow);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.page svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Verovio emits presentation attributes and reusable SMuFL glyphs. Override
+   both the drawing primitives and <use> instances so the complete score follows
+   the app theme without re-running the expensive engraving step. */
+.page svg :global(path),
+.page svg :global(polygon),
+.page svg :global(polyline),
+.page svg :global(line),
+.page svg :global(use),
+.page svg :global(text),
+.page svg :global(tspan) {
+  color: var(--score-ink) !important;
+  fill: var(--score-ink) !important;
+  stroke: var(--score-ink) !important;
+}
+
+.page svg :global(.syl) :global(text),
+.page svg :global(.harm) :global(text),
+.page svg :global(.tempo) :global(text),
+.page svg :global(.mNum) :global(text),
+.page svg :global(.label) :global(text),
+.page svg :global(.labelAbbr) :global(text) {
+  color: var(--score-ink-muted) !important;
+  fill: var(--score-ink-muted) !important;
+  stroke: none !important;
+}
+
+.page :global(.note) {
+  cursor: pointer;
+}
+
+.page :global(.note):hover :global(.notehead) {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--ctp-blue) 60%, transparent));
+}
+
+.page :global(.note).playing :global(.notehead) path,
+.page :global(.note).playing :global(.stem) path,
+.page :global(.note).playing :global(.flag) path,
+.page :global(.note).playing :global(.beam) path {
+  fill: var(--ctp-red) !important;
+  stroke: var(--ctp-red) !important;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--ctp-red) 75%, transparent));
+}
+
+.page :global(.note).playing :global(.notehead) {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ctp-red) 70%, transparent));
+}
+
+.highlights {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.noteHighlight {
+  position: absolute;
+  border: 2px solid color-mix(in srgb, var(--ctp-red) 75%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--ctp-red) 22%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ctp-red) 35%, transparent);
+  transition:
+    left 90ms linear,
+    top 90ms linear,
+    width 90ms linear,
+    height 90ms linear;
+}
+
+.status {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.statusContent {
+  display: grid;
+  width: min(320px, 80%);
+  gap: 10px;
+  text-align: center;
+}
+
+.statusContent progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--ctp-blue);
+}
+
+.progressText {
+  color: var(--text-muted);
+  font-family: monospace;
+  font-size: 12px;
+}

@@ -105,6 +105,14 @@ bun run dev   # or: npm run dev
 
 The app runs directly on the host at `http://localhost:5173` — no Docker or backend server required. Vite provides React Fast Refresh and CSS hot module replacement, so source changes appear without a full reload. The server also listens on the host's LAN address for testing from other devices.
 
+Web MIDI works on `http://localhost` because Chrome treats localhost as a secure context. For access through a LAN address, start the HTTPS development server instead:
+
+```bash
+npm run dev:https
+```
+
+Open the printed `https://...:5173` address and accept the development certificate warning. If MIDI permission was previously denied, reset it from Chrome's site settings before clicking "Enable MIDI" again.
+
 ### Production Build
 
 ```bash

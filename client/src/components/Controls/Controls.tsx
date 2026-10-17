@@ -61,7 +61,15 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
   const { files, currentFile, currentFileId, setCurrentFile, handleFileInput } =
     useMidiFile();
 
-  const { inputs, selectedInput, selectInput, isEnabled } = useMidiInput();
+  const {
+    inputs,
+    selectedInput,
+    selectInput,
+    isEnabled,
+    accessState,
+    accessError,
+    requestAccess,
+  } = useMidiInput();
 
   const { settings, updateSettings } = useMidiStore();
 
@@ -506,8 +514,28 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           {/* MIDI input selector */}
           <div className={styles.gridItem}>
             <label className={styles.label}>{t('midiInput')}</label>
-            {!isEnabled ? (
-              <span className={styles.warning}>{t('midiNotAvailable')}</span>
+            {accessState === 'unsupported' ? (
+              <span className={styles.warning}>{t('midiUnsupported')}</span>
+            ) : accessState === 'insecure' ? (
+              <span className={styles.warning}>{t('midiRequiresHttps')}</span>
+            ) : accessState === 'requesting' ? (
+              <button className={styles.button} disabled>
+                {t('enablingMidi')}
+              </button>
+            ) : !isEnabled ? (
+              <button
+                className={styles.button}
+                title={accessError ?? undefined}
+                onClick={() => {
+                  void requestAccess().catch(() => undefined);
+                }}
+              >
+                {accessState === 'denied'
+                  ? t('midiPermissionDenied')
+                  : accessState === 'error'
+                    ? t('midiAccessError')
+                    : t('enableMidi')}
+              </button>
             ) : inputs.length === 0 ? (
               <span className={styles.muted}>{t('noDevices')}</span>
             ) : (

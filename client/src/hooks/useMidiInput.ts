@@ -6,6 +6,113 @@ import type { MidiDevice } from '../types/midi';
 /** MIDI CC number for sustain pedal */
 const SUSTAIN_CC = 64;
 
+export type MidiAccessState =
+  | 'unsupported'
+  | 'insecure'
+  | 'idle'
+  | 'requesting'
+  | 'enabled'
+  | 'denied'
+  | 'error';
+
+let accessState: MidiAccessState = WebMidi.enabled
+  ? 'enabled'
+  : typeof window !== 'undefined' && !window.isSecureContext
+    ? 'insecure'
+  : typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator
+    ? 'idle'
+    : 'unsupported';
+let accessError: string | null = null;
+let enablePromise: Promise<void> | null = null;
+let deviceListenersInstalled = false;
+const accessListeners = new Set<() => void>();
+
+function notifyAccessListeners() {
+  accessListeners.forEach((listener) => listener());
+}
+
+function updateDevices() {
+  const midiDevices: MidiDevice[] = [
+    ...WebMidi.inputs.map((input) => ({
+      id: input.id,
+      name: input.name,
+      manufacturer: input.manufacturer,
+      type: 'input' as const,
+      connected: true,
+    })),
+    ...WebMidi.outputs.map((output) => ({
+      id: output.id,
+      name: output.name,
+      manufacturer: output.manufacturer,
+      type: 'output' as const,
+      connected: true,
+    })),
+  ];
+  useMidiStore.getState().setDevices(midiDevices);
+}
+
+function autoSelectDevice() {
+  const state = useMidiStore.getState();
+  const hardwareInputs = WebMidi.inputs.filter(
+    (input) => !isVirtualDevice(input.name, input.manufacturer),
+  );
+  const selectedStillExists = hardwareInputs.some(
+    (input) => input.id === state.selectedInputId,
+  );
+  if (hardwareInputs.length > 0 && (!state.selectedInputId || !selectedStillExists)) {
+    state.selectInput(hardwareInputs[0].id);
+  }
+}
+
+function installDeviceListeners() {
+  if (deviceListenersInstalled) return;
+  deviceListenersInstalled = true;
+  WebMidi.addListener('connected', () => {
+    updateDevices();
+    autoSelectDevice();
+  });
+  WebMidi.addListener('disconnected', updateDevices);
+}
+
+async function requestMidiAccess(): Promise<void> {
+  if (WebMidi.enabled) {
+    accessState = 'enabled';
+    updateDevices();
+    autoSelectDevice();
+    installDeviceListeners();
+    notifyAccessListeners();
+    return;
+  }
+  if (accessState === 'unsupported' || accessState === 'insecure') return;
+  if (enablePromise) return enablePromise;
+
+  accessState = 'requesting';
+  accessError = null;
+  notifyAccessListeners();
+
+  enablePromise = WebMidi.enable({ sysex: false })
+    .then(() => {
+      accessState = 'enabled';
+      updateDevices();
+      autoSelectDevice();
+      installDeviceListeners();
+    })
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      accessError = message;
+      accessState = /permission|notallowed|denied/i.test(message)
+        ? 'denied'
+        : 'error';
+      throw error;
+    })
+    .finally(() => {
+      enablePromise = null;
+      notifyAccessListeners();
+    });
+
+  return enablePromise;
+}
+
 /** Options for the useMidiInput hook */
 export interface UseMidiInputOptions {
   /** Called when a note is pressed on the MIDI device */
@@ -43,7 +150,6 @@ function isVirtualDevice(name: string, manufacturer: string): boolean {
 export function useMidiInput(options: UseMidiInputOptions = {}) {
   const {
     devices,
-    setDevices,
     selectedInputId,
     selectInput,
     setLiveNote,
@@ -51,127 +157,33 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
     addSatisfiedWaitNote,
   } = useMidiStore();
 
-  const [isWebMidiReady, setIsWebMidiReady] = useState(WebMidi.enabled);
+  const [midiAccessState, setMidiAccessState] = useState(accessState);
+  const [midiAccessError, setMidiAccessError] = useState(accessError);
 
   // Store callbacks in refs to avoid re-subscribing when callbacks change
   const callbacksRef = useRef(options);
   callbacksRef.current = options;
 
-  // Initialize WebMidi once
+  // Subscribe to the module-level singleton permission state. Permission is
+  // requested only from requestAccess(), which is called by a user gesture.
   useEffect(() => {
-    let mounted = true;
-
-    function updateDevices() {
-      const midiDevices: MidiDevice[] = [
-        ...WebMidi.inputs.map((input) => ({
-          id: input.id,
-          name: input.name,
-          manufacturer: input.manufacturer,
-          type: 'input' as const,
-          connected: true,
-        })),
-        ...WebMidi.outputs.map((output) => ({
-          id: output.id,
-          name: output.name,
-          manufacturer: output.manufacturer,
-          type: 'output' as const,
-          connected: true,
-        })),
-      ];
-      console.log('[MidiInput] Devices updated:', midiDevices.map(d => d.name));
-      setDevices(midiDevices);
-    }
-
-    function autoSelectDevice() {
-      const currentSelected = useMidiStore.getState().selectedInputId;
-      const hardwareInputs = WebMidi.inputs.filter(
-        (i) => !isVirtualDevice(i.name, i.manufacturer)
-      );
-      const selectedStillExists = hardwareInputs.some((i) => i.id === currentSelected);
-
-      if (hardwareInputs.length > 0 && (!currentSelected || !selectedStillExists)) {
-        console.log('[MidiInput] Auto-selecting:', hardwareInputs[0].name);
-        selectInput(hardwareInputs[0].id);
-      }
-    }
-
-    async function init() {
-      // If already enabled, just update state
-      if (WebMidi.enabled) {
-        console.log('[MidiInput] WebMidi already enabled');
-        updateDevices();
-        autoSelectDevice();
-        if (mounted) setIsWebMidiReady(true);
-        return;
-      }
-
-      try {
-        // Firefox needs extra time after page load to detect MIDI devices
-        // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1805582
-        const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-        if (isFirefox) {
-          console.log('[MidiInput] Firefox detected, waiting for MIDI subsystem...');
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          if (!mounted) return;
-        }
-
-        console.log('[MidiInput] Enabling WebMidi...');
-        await WebMidi.enable({ sysex: false });
-        console.log('[MidiInput] WebMidi enabled successfully');
-
-        if (!mounted) return;
-
-        updateDevices();
-        autoSelectDevice();
-        setIsWebMidiReady(true);
-
-        // Listen for device changes
-        WebMidi.addListener('connected', () => {
-          console.log('[MidiInput] Device connected');
-          updateDevices();
-          autoSelectDevice();
-        });
-
-        WebMidi.addListener('disconnected', () => {
-          console.log('[MidiInput] Device disconnected');
-          updateDevices();
-        });
-
-      } catch (err) {
-        console.error('[MidiInput] WebMidi could not be enabled:', err);
-
-        // Firefox sometimes fails on first attempt after page refresh
-        // Retry once after a delay
-        const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-        if (isFirefox && mounted) {
-          console.log('[MidiInput] Firefox: Retrying in 1 second...');
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          if (!mounted) return;
-
-          try {
-            await WebMidi.enable({ sysex: false });
-            console.log('[MidiInput] WebMidi enabled on retry');
-            updateDevices();
-            autoSelectDevice();
-            setIsWebMidiReady(true);
-          } catch (retryErr) {
-            console.error('[MidiInput] WebMidi retry failed:', retryErr);
-          }
-        }
-      }
-    }
-
-    init();
-
-    // Don't disable WebMidi on cleanup - it's a singleton and should stay enabled
-    return () => {
-      mounted = false;
+    const update = () => {
+      setMidiAccessState(accessState);
+      setMidiAccessError(accessError);
     };
-  }, [setDevices, selectInput]);
+    accessListeners.add(update);
+    if (WebMidi.enabled) void requestMidiAccess();
+    return () => {
+      accessListeners.delete(update);
+    };
+  }, []);
 
   // Handle input selection and note events
   useEffect(() => {
-    if (!isWebMidiReady || !selectedInputId) {
+    const handlesMidiMessages = Boolean(
+      options.onNoteOn || options.onNoteOff || options.onSustain,
+    );
+    if (!handlesMidiMessages || midiAccessState !== 'enabled' || !selectedInputId) {
       clearLiveNotes();
       return;
     }
@@ -214,7 +226,7 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
       input.removeListener('controlchange', handleControlChange);
       clearLiveNotes();
     };
-  }, [isWebMidiReady, selectedInputId, setLiveNote, clearLiveNotes, addSatisfiedWaitNote]);
+  }, [midiAccessState, selectedInputId, setLiveNote, clearLiveNotes, addSatisfiedWaitNote]);
 
   // Get available inputs (filter out virtual devices)
   const inputs = devices.filter(
@@ -231,6 +243,9 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
     outputs,
     selectedInput,
     selectInput,
-    isEnabled: isWebMidiReady,
+    isEnabled: midiAccessState === 'enabled',
+    accessState: midiAccessState,
+    accessError: midiAccessError,
+    requestAccess: requestMidiAccess,
   };
 }

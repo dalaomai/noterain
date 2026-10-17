@@ -16,7 +16,7 @@ import { useMidiStore, calculateNoteRange } from './stores/midiStore';
 import './App.css';
 
 function App() {
-  const { noteOn, noteOff, setSustain, resumeAudio, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity } = useAudioEngine();
+  const { noteOn, noteOff, setSustain, resumeAudio, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity, audioError, isRetryingAudio, retryAudio } = useAudioEngine();
   const { handleDrop, currentFile } = useMidiFile();
   const { settings, setLiveNote, addSatisfiedWaitNote } = useMidiStore();
   const { t } = useI18n();
@@ -114,7 +114,7 @@ function App() {
         />
       )}
 
-      <Controls isLoadingFullVelocity={isLoadingFullVelocity} />
+      <Controls isLoadingFullVelocity={isLoadingFullVelocity} audioError={audioError} isRetryingAudio={isRetryingAudio} onRetryAudio={retryAudio} />
 
       <div className={`main-content${settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
         {settings.showNotesOverlay && <NotesOverlay />}

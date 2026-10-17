@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Tone from 'tone';
 import { useMidiStore } from '../stores/midiStore';
+import { useOfflinePackStore } from '../stores/offlinePackStore';
 import { getNoteNameFromNumber } from '../types/midi';
 import { loadPianoSample, SAMPLE_NOTES, VELOCITY_LAYERS } from '../utils/offlinePack';
 
@@ -54,6 +55,7 @@ type LoadingPhase = 'loading' | 'downloading' | 'decoding' | 'done';
 /** Hook for audio playback using Tone.js with multi-velocity sampling */
 export function useAudioEngine() {
   const { settings, liveNotes } = useMidiStore();
+  const fullPackCached = useOfflinePackStore((state) => state.cached === state.total);
 
   // Map of velocity layer -> Sampler instance
   const samplersRef = useRef<Map<number, Tone.Sampler>>(new Map());
@@ -61,6 +63,10 @@ export function useAudioEngine() {
   const activeNoteSamplersRef = useRef<Map<number, number>>(new Map());
   const isLoadedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [audioError, setAudioError] = useState(false);
+  const [isRetryingAudio, setIsRetryingAudio] = useState(false);
+  const [audioAttempt, setAudioAttempt] = useState(0);
+  const retryAudio = useCallback(() => setAudioAttempt((attempt) => attempt + 1), []);
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [decodeProgress, setDecodeProgress] = useState(0);
@@ -89,10 +95,31 @@ export function useAudioEngine() {
     loadedCountRef.current = 0;
     isLoadedRef.current = false;
     loadedLayersRef.current = new Set();
+    setDownloadProgress(0);
+    setDecodeProgress(0);
+    setLoadingPhase('loading');
+    setIsRetryingAudio(audioAttempt > 0);
 
     let downloadedCount = 0;
     let aborted = false;
+    let settled = false;
     const initialSampleCount = SAMPLE_NOTES.length; // Only 30 samples for layer 8
+    const startupTimeout = window.setTimeout(
+      () => failInitialization(new Error('Audio startup timed out')),
+      15000,
+    );
+
+    function failInitialization(error: unknown) {
+      if (aborted || settled) return;
+      settled = true;
+      clearTimeout(startupTimeout);
+      abortController.abort();
+      console.warn('[AudioEngine] Continuing without piano audio:', error);
+      setAudioError(true);
+      setIsRetryingAudio(false);
+      setLoadingPhase('done');
+      setIsLoading(false);
+    }
 
     async function loadInitialLayer() {
       // Phase 1: Read the default layer from the offline pack, downloading misses.
@@ -106,19 +133,19 @@ export function useAudioEngine() {
         const promise = loadPianoSample(url, {
           signal: abortController.signal,
           onDownload: () => {
-            if (!aborted) setLoadingPhase('downloading');
+            if (!aborted && !settled) setLoadingPhase('downloading');
           },
         })
           .then(response => response.blob())
           .then(blob => {
-            if (aborted) return;
+            if (aborted || settled) return;
             const blobUrl = URL.createObjectURL(blob);
             blobUrls.set(url, blobUrl);
             downloadedCount++;
             setDownloadProgress(downloadedCount);
           })
           .catch(err => {
-            if (aborted) return;
+            if (aborted || settled) return;
             console.warn(`[AudioEngine] Failed to download ${url}:`, err);
             downloadedCount++;
             setDownloadProgress(downloadedCount);
@@ -128,25 +155,38 @@ export function useAudioEngine() {
 
       await Promise.all(downloadPromises);
 
-      if (aborted) return;
+      if (aborted || settled) return;
 
       // Phase 2: Decode the default layer with Tone.js
       console.log('[AudioEngine] Initial samples loaded, decoding...');
       setLoadingPhase('decoding');
 
-      // Build URLs using blob cache
-      const urls: Record<string, string> = {};
-      for (const note of SAMPLE_NOTES) {
+      // Decode cached blobs independently so one bad sample cannot block the app.
+      const urls: Record<string, AudioBuffer> = {};
+      await Promise.all(SAMPLE_NOTES.map(async (note) => {
         const originalUrl = `${getBaseUrl(layer)}${note}v${layer}.mp3`;
         const blobUrl = blobUrls.get(originalUrl);
+        if (!blobUrl) return;
         const toneNote = note.replace('Ds', 'D#').replace('Fs', 'F#');
-        urls[toneNote] = blobUrl || originalUrl;
-      }
+        try {
+          const response = await fetch(blobUrl, { signal: abortController.signal });
+          const buffer = await Tone.getContext().decodeAudioData(await response.arrayBuffer());
+          if (!aborted && !settled) urls[toneNote] = buffer;
+        } catch (error) {
+          if (!aborted && !settled)
+            console.warn(`[AudioEngine] Skipping invalid cached sample ${originalUrl}:`, error);
+        }
+      }));
+      if (aborted || settled) return;
+      if (Object.keys(urls).length === 0)
+        throw new Error('No piano samples are available');
 
       const sampler = new Tone.Sampler({
         urls,
         onload: () => {
-          if (aborted) return;
+          if (aborted || settled) return;
+          settled = true;
+          clearTimeout(startupTimeout);
           loadedCountRef.current = 1;
           setDecodeProgress(1);
           console.log(`[AudioEngine] Default velocity layer ${layer} ready`);
@@ -154,9 +194,11 @@ export function useAudioEngine() {
           isLoadedRef.current = true;
           setLoadingPhase('done');
           setIsLoading(false);
+          setAudioError(false);
+          setIsRetryingAudio(false);
         },
         onerror: (err) => {
-          console.warn(`[AudioEngine] Failed to decode velocity layer ${layer}:`, err);
+          failInitialization(err);
         },
       }).toDestination();
 
@@ -164,10 +206,11 @@ export function useAudioEngine() {
       samplersRef.current = samplers;
     }
 
-    loadInitialLayer();
+    void loadInitialLayer().catch(failInitialization);
 
     return () => {
       aborted = true;
+      clearTimeout(startupTimeout);
       abortController.abort();
       // Abort any ongoing full velocity load
       fullVelocityAbortRef.current?.abort();
@@ -180,12 +223,20 @@ export function useAudioEngine() {
       }
       blobUrls.clear();
     };
-  }, []);
+  }, [audioAttempt]);
 
-  // Load remaining velocity layers when playMidiInputAudio is enabled
   useEffect(() => {
-    // Only trigger on-demand loading when playMidiInputAudio is enabled
-    if (!settings.playMidiInputAudio) {
+    const onOnline = () => {
+      if (audioError && !isRetryingAudio) retryAudio();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [audioError, isRetryingAudio, retryAudio]);
+
+  // Decode all velocity layers only after a PWA/manual offline download completes.
+  useEffect(() => {
+    // Ordinary browser sessions use the default layer without prefetching the pack.
+    if (!settings.playMidiInputAudio || !fullPackCached) {
       // Abort any ongoing load if user disables the setting
       if (fullVelocityAbortRef.current) {
         fullVelocityAbortRef.current.abort();
@@ -201,7 +252,7 @@ export function useAudioEngine() {
     }
 
     // Don't start if initial load isn't complete yet
-    if (!isLoadedRef.current) {
+    if (isLoading || !isLoadedRef.current) {
       return;
     }
 
@@ -315,7 +366,7 @@ export function useAudioEngine() {
     return () => {
       abortController.abort();
     };
-  }, [settings.playMidiInputAudio, settings.audioEnabled, settings.volume]);
+  }, [settings.playMidiInputAudio, settings.audioEnabled, settings.volume, fullPackCached, isLoading, audioAttempt, audioError]);
 
   // Update volume on all samplers
   useEffect(() => {
@@ -471,6 +522,9 @@ export function useAudioEngine() {
     resumeAudio,
     isLoaded: isLoadedRef.current,
     isLoading,
+    audioError,
+    isRetryingAudio,
+    retryAudio,
     loadingPhase,
     downloadProgress,
     decodeProgress,

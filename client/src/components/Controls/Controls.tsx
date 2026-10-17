@@ -42,11 +42,14 @@ import styles from './Controls.module.css';
 
 interface ControlsProps {
   isLoadingFullVelocity: boolean;
+  audioError?: boolean;
+  isRetryingAudio?: boolean;
+  onRetryAudio?: () => void;
 }
 
 const FEEDBACK_OPTIONS = ['followPitchFeedback', 'followTimingFeedback', 'followVelocityFeedback'] as const;
 
-export function Controls({ isLoadingFullVelocity }: ControlsProps) {
+export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, onRetryAudio }: ControlsProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const autoCloseTimerRef = useRef<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(
@@ -1079,6 +1082,15 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
             </label>
           </div>
 
+          {audioError && (
+            <div className={styles.gridItem}>
+              <span className={styles.muted} role="status">{t('pianoAudioUnavailable')}</span>
+              <button className={styles.button} onClick={onRetryAudio} disabled={isRetryingAudio}>
+                {t(isRetryingAudio ? 'retryingPianoAudio' : 'retryPianoAudio')}
+              </button>
+            </div>
+          )}
+
           {/* Offline audio pack */}
           <div className={styles.gridItem}>
             <label className={styles.label}>{t('offline')}</label>
@@ -1159,7 +1171,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               </>
             )}
             {offlinePack.error && !offlinePack.isDownloading && (
-              <span className={styles.warning}>
+              <span className={styles.muted}>
                 {t('offlinePackIncomplete')}
               </span>
             )}

@@ -3,7 +3,6 @@ import { registerSW } from 'virtual:pwa-register';
 import { useMidiStore } from './midiStore';
 import { useOfflinePackStore } from './offlinePackStore';
 
-const PENDING_INSTALL = 'noterain-offline-install-required';
 type InstallPhase = 'idle' | 'preparing' | 'ready' | 'error';
 interface PwaState {
   installed: boolean;
@@ -24,20 +23,10 @@ let installation: Promise<void> | null = null;
 let initialized = false;
 let applyRequested = false;
 let reloading = false;
+// Remember a verified PWA window only for this document, including fullscreen.
+let installedThisPage = launchedAsApp();
 
-function pendingInstall(value?: boolean): boolean {
-  try {
-    if (value !== undefined) {
-      if (value) localStorage.setItem(PENDING_INSTALL, '1');
-      else localStorage.removeItem(PENDING_INSTALL);
-    }
-    return localStorage.getItem(PENDING_INSTALL) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function standalone() {
+function launchedAsApp() {
   return (
     window.matchMedia(
       '(display-mode: standalone), (display-mode: minimal-ui), (display-mode: window-controls-overlay)',
@@ -49,7 +38,7 @@ function standalone() {
 async function ensureCoreAssets() {
   if (!window.isSecureContext || !('serviceWorker' in navigator))
     throw new Error('Offline installation is unavailable');
-  await new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const channel = new MessageChannel();
     let finished = false;
     const finish = (error?: Error) => {
@@ -104,7 +93,7 @@ function safeReload() {
 }
 
 export const usePwaStore = create<PwaState>((set, get) => ({
-  installed: standalone() || pendingInstall(),
+  installed: installedThisPage,
   installPhase: 'idle',
   coreReady: false,
   updateReady: false,
@@ -113,22 +102,35 @@ export const usePwaStore = create<PwaState>((set, get) => ({
   updateError: false,
   dismissUpdate: () => set({ updateDismissed: true }),
   retryInstall: () => {
+    // URL parameters and unfinished downloads do not prove this is a PWA.
+    if (!launchedAsApp() && !installedThisPage) return Promise.resolve();
     if (installation) return installation;
-    pendingInstall(true);
-    set({ installed: true, installPhase: 'preparing', coreReady: false });
+    set({
+      installed: true,
+      installPhase: 'preparing',
+      coreReady: false,
+    });
     installation = (async () => {
       try {
-        await Promise.all([
+        const results = await Promise.allSettled([
           ensureCoreAssets().then(() => {
             set({ coreReady: true });
           }),
-          useOfflinePackStore.getState().startDownload(),
+          (async () => {
+            const pack = useOfflinePackStore.getState();
+            await pack.refresh();
+            if (useOfflinePackStore.getState().cached === pack.total) return;
+            if (!navigator.onLine) throw new Error('Network disconnected');
+            await pack.startDownload();
+          })(),
         ]);
+        for (const result of results) {
+          if (result.status === 'rejected') throw result.reason;
+        }
         await useOfflinePackStore.getState().refresh();
         const pack = useOfflinePackStore.getState();
         if (pack.cached !== pack.total || pack.error)
           throw new Error('Piano samples are incomplete');
-        pendingInstall(false);
         set({ installPhase: 'ready' });
       } catch (error) {
         console.warn('[PWA] Offline installation is incomplete:', error);
@@ -166,6 +168,8 @@ export function initializePwa() {
   initialized = true;
   let checking = false;
   let lastCheck = 0;
+  let retryTimer: number | undefined;
+  let retryDelay = 5000;
   let controlled = Boolean(navigator.serviceWorker?.controller);
   const showUpdate = () =>
     usePwaStore.setState({ updateReady: true, updateDismissed: false });
@@ -202,6 +206,9 @@ export function initializePwa() {
     },
   });
   const ensureInstalled = () => {
+    // Re-check on startup/resume; install and display-mode events may be missed.
+    if (launchedAsApp()) installedThisPage = true;
+    usePwaStore.setState({ installed: installedThisPage });
     if (
       usePwaStore.getState().installed &&
       usePwaStore.getState().installPhase !== 'preparing'
@@ -209,12 +216,16 @@ export function initializePwa() {
       void usePwaStore.getState().retryInstall();
   };
   const onInstalled = () => {
-    void usePwaStore.getState().retryInstall();
+    installedThisPage = true;
+    ensureInstalled();
   };
   const onResume = () => {
     if (document.visibilityState !== 'visible') return;
     void checkUpdate();
-    if (usePwaStore.getState().installPhase !== 'ready') ensureInstalled();
+    if (usePwaStore.getState().installPhase !== 'ready') {
+      clearTimeout(retryTimer);
+      ensureInstalled();
+    }
   };
   const onOnline = () => {
     lastCheck = 0;
@@ -224,7 +235,7 @@ export function initializePwa() {
     '(display-mode: standalone), (display-mode: minimal-ui), (display-mode: window-controls-overlay)',
   );
   const onDisplayMode = () => {
-    if (standalone()) onInstalled();
+    ensureInstalled();
   };
   const onControllerChange = () => {
     if (controlled) safeReload();
@@ -245,9 +256,28 @@ export function initializePwa() {
     },
     60 * 60 * 1000,
   );
+  const unsubscribe = usePwaStore.subscribe((state, previous) => {
+    if (state.installPhase === previous.installPhase) return;
+    clearTimeout(retryTimer);
+    if (state.installPhase === 'ready') retryDelay = 5000;
+    if (
+      state.installPhase === 'error' &&
+      state.installed &&
+      navigator.onLine &&
+      document.visibilityState === 'visible'
+    ) {
+      retryTimer = window.setTimeout(onResume, retryDelay);
+      retryDelay = Math.min(retryDelay * 2, 60000);
+    }
+  });
   ensureInstalled();
+  if (window.isSecureContext && 'serviceWorker' in navigator) {
+    void navigator.serviceWorker.ready.then(onResume);
+  }
   import.meta.hot?.dispose(() => {
     clearInterval(interval);
+    clearTimeout(retryTimer);
+    unsubscribe();
     window.removeEventListener('appinstalled', onInstalled);
     window.removeEventListener('online', onOnline);
     window.removeEventListener('pageshow', onResume);

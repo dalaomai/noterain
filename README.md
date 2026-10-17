@@ -138,7 +138,7 @@ docker run -p 3000:80 noterain
 NoteRain is a PWA and works fully offline:
 
 - **App shell** (HTML/JS/CSS) is pre-cached by the service worker on first visit
-- **Offline audio pack**: click "Audio pack" in the settings to download all piano samples (~85MB, 480 files) for complete offline playback
+- **Offline audio pack**: PWA installation confirmation or launching in an installed PWA window while online automatically downloads all piano samples (~85MB, 480 files). Download progress and offline readiness are shown quietly in the audio settings. Interrupted downloads resume automatically in PWA mode; existing samples are reused. Ordinary browser tabs load the default playback samples only, even if an earlier PWA download was interrupted. Use "Audio pack" in the settings to download the full pack manually.
 - **MIDI library** is stored in IndexedDB (no size limits of localStorage)
 - Install as an app via your browser's "Install" prompt for a standalone offline experience
 

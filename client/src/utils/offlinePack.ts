@@ -8,6 +8,21 @@
 import { SAMPLES_CACHE_NAME } from '../constants/offline';
 export { SAMPLES_CACHE_NAME } from '../constants/offline';
 
+/** A cached velocity layer can supply the same pitch when the default is missing. */
+async function findAlternativeCachedSample(cache: Cache, url: string): Promise<Response | undefined> {
+  const match = new URL(url, window.location.href).pathname.match(
+    /\/samples\/piano\/v(\d+)\/([^/]+)v\1\.mp3$/,
+  );
+  if (!match) return;
+  const requestedLayer = Number(match[1]);
+  const layers = VELOCITY_LAYERS.filter((layer) => layer !== requestedLayer)
+    .sort((a, b) => Math.abs(a - requestedLayer) - Math.abs(b - requestedLayer));
+  for (const layer of layers) {
+    const cached = await cache.match(`/samples/piano/v${layer}/${match[2]}v${layer}.mp3`);
+    if (cached?.ok) return cached;
+  }
+}
+
 /** Read the offline pack directly, even without a controlling service worker. */
 export async function loadPianoSample(
   url: string,
@@ -20,6 +35,8 @@ export async function loadPianoSample(
       cache = await caches.open(SAMPLES_CACHE_NAME);
       const cached = await cache.match(url);
       if (cached?.ok) return cached;
+      const alternative = await findAlternativeCachedSample(cache, url);
+      if (alternative) return alternative;
     }
   } catch {
     // Cache Storage may be unavailable; samples can still be loaded online.
@@ -29,6 +46,7 @@ export async function loadPianoSample(
   if (signal?.aborted) {
     throw signal.reason ?? new DOMException('Aborted', 'AbortError');
   }
+  if (!navigator.onLine) throw new Error(`Sample unavailable offline: ${url}`);
   onDownload?.();
   const response = await fetch(url, { signal });
   if (!response.ok)
@@ -153,13 +171,27 @@ export async function downloadOfflinePack(
         // Skip if already cached
         const cached = await cache.match(url);
         if (!cached?.ok) {
-          const response = await fetch(url, { signal });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          await cache.put(url, response);
+          const request = new AbortController();
+          const abort = () => request.abort(signal?.reason);
+          if (signal?.aborted) abort();
+          signal?.addEventListener('abort', abort, { once: true });
+          // A stalled request must not block all future installation retries.
+          const timeout = setTimeout(
+            () => request.abort(new DOMException('Sample download timed out', 'TimeoutError')),
+            30000,
+          );
+          try {
+            const response = await fetch(url, { signal: request.signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await cache.put(url, response);
+          } finally {
+            clearTimeout(timeout);
+            signal?.removeEventListener('abort', abort);
+          }
         }
         downloaded++;
       } catch (error) {
-        if ((error as Error).name === 'AbortError') return;
+        if (signal?.aborted) return;
         failed++;
         console.warn(`[OfflinePack] Failed to cache ${url}:`, error);
       }

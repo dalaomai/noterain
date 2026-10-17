@@ -35,7 +35,10 @@ export const useOfflinePackStore = create<OfflinePackState>((set, get) => ({
     if (refreshing) return refreshing;
     refreshing = getCachedSampleCount()
       .then((cached) => {
-        set({ cached });
+        set((state) => ({
+          cached,
+          error: cached === state.total ? false : state.error,
+        }));
       })
       .finally(() => {
         refreshing = null;

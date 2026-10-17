@@ -141,9 +141,12 @@ export const en = {
   offlineInstallProgress: 'Offline resource download progress',
   offlineInstallReady: 'Full offline resources are ready',
   offlineInstallIncomplete: 'Offline installation is incomplete',
-  offlineInstallRetryDescription: 'Saved samples: {count}/{total}. Check the network and available storage, then retry.',
+  offlineInstallRetryDescription: 'Saved samples: {count}/{total}. Downloads resume automatically while online. Keep the app open until complete.',
   retryOfflineInstall: 'Resume download',
   offlinePackIncomplete: 'Some samples are missing. Download again to resume.',
+  pianoAudioUnavailable: 'Piano audio is unavailable',
+  retryPianoAudio: 'Retry piano audio',
+  retryingPianoAudio: 'Restoring piano audio…',
 
   // Offline pack
   offline: 'Offline:',
@@ -319,9 +322,12 @@ export const zh: Record<TranslationKeys, string> = {
   offlineInstallProgress: '离线资源下载进度',
   offlineInstallReady: '完整离线资源已就绪',
   offlineInstallIncomplete: '离线安装尚未完成',
-  offlineInstallRetryDescription: '已保存 {count}/{total} 个采样，请检查网络和存储空间后继续下载。',
+  offlineInstallRetryDescription: '已保存 {count}/{total} 个采样，联网时会自动重试。请保持应用打开，等待资源补齐。',
   retryOfflineInstall: '继续下载',
   offlinePackIncomplete: '部分音色尚未下载，请再次下载以补齐。',
+  pianoAudioUnavailable: '钢琴音色暂不可用',
+  retryPianoAudio: '重新加载音色',
+  retryingPianoAudio: '正在恢复音色…',
 
   // Offline pack
   offline: '离线：',

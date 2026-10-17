@@ -389,29 +389,30 @@ export function useAudioEngine() {
 
   /** Play a single note with velocity-appropriate sample */
   const playNote = useCallback(
-    (noteNumber: number, velocity: number = 100, duration: number = 0.5) => {
+    (noteNumber: number, velocity: number = 100, duration: number = 0.5, time?: number) => {
       if (!settings.audioEnabled) {
         console.log('[AudioEngine] Audio disabled, skipping note');
-        return;
+        return true;
       }
       if (!isLoadedRef.current) {
-        console.log('[AudioEngine] Samples not loaded yet, skipping note');
-        return;
+        return false;
       }
 
       const layer = getBestAvailableLayer(velocity, loadedLayersRef.current);
       const sampler = samplersRef.current.get(layer);
       if (!sampler) {
         console.warn('[AudioEngine] No sampler for layer:', layer);
-        return;
+        return false;
       }
 
       const noteName = getNoteNameFromNumber(noteNumber);
 
       try {
-        sampler.triggerAttackRelease(noteName, duration, Tone.now());
+        sampler.triggerAttackRelease(noteName, duration, time ?? Tone.now());
+        return true;
       } catch (e) {
         console.warn('Failed to play note:', e);
+        return false;
       }
     },
     [settings.audioEnabled]
@@ -513,6 +514,11 @@ export function useAudioEngine() {
     }
   }, []);
 
+  const getAudioTime = useCallback(
+    () => Tone.context.state === 'running' ? Tone.now() : null,
+    [],
+  );
+
   return {
     playNote,
     noteOn,
@@ -520,6 +526,7 @@ export function useAudioEngine() {
     stopAll,
     setSustain,
     resumeAudio,
+    getAudioTime,
     isLoaded: isLoadedRef.current,
     isLoading,
     audioError,

@@ -8,6 +8,7 @@ import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useMidiFile } from './hooks/useMidiFile';
 import { useMidiInput } from './hooks/useMidiInput';
+import { useI18n } from './hooks/useI18n';
 import { useMidiStore, calculateNoteRange } from './stores/midiStore';
 import './App.css';
 
@@ -15,6 +16,7 @@ function App() {
   const { noteOn, noteOff, setSustain, resumeAudio, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity } = useAudioEngine();
   const { handleDrop, currentFile } = useMidiFile();
   const { settings, setLiveNote, addSatisfiedWaitNote } = useMidiStore();
+  const { t } = useI18n();
 
   // Store audio functions in ref to avoid MIDI listener re-subscriptions
   const audioRef = useRef({ noteOn, noteOff, setSustain, resumeAudio, settings, isLoading });
@@ -123,7 +125,7 @@ function App() {
 
         {!currentFile && !isLoading && (
           <div className="empty-state">
-            <p>Drop a MIDI file here or click "Open MIDI" to get started</p>
+            <p>{t('emptyState')}</p>
           </div>
         )}
       </div>

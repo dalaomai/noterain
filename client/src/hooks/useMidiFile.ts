@@ -56,7 +56,7 @@ export function useMidiFile() {
   /** Delete a MIDI file */
   const deleteFile = useCallback(
     (id: string) => {
-      removeRawMidiData(id);
+      void removeRawMidiData(id);
       removeFile(id);
     },
     [removeFile]

@@ -209,6 +209,27 @@
   color: var(--text-muted);
 }
 
+.offlineReady {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--success, #22c55e);
+}
+
+.offlineProgress {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  min-width: 72px;
+}
+
+.offlineProgressBar {
+  width: 100px;
+  height: 6px;
+  accent-color: var(--accent, #3b82f6);
+}
+
 .trackName {
   cursor: pointer;
   flex: 1;

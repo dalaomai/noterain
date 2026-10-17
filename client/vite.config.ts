@@ -15,6 +15,7 @@ export default defineConfig({
       manifest: false, // Use existing manifest.json
       workbox: {
         cleanupOutdatedCaches: true,
+        navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
@@ -44,13 +45,9 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true,
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
+    strictPort: true,
   },
   build: {
     outDir: '../dist/client',

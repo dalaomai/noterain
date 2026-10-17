@@ -36,8 +36,8 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
 
   const fileId = generateId();
 
-  // Save raw data for later export
-  saveRawMidiData(fileId, data);
+  // Save raw data for later export (IndexedDB, async)
+  void saveRawMidiData(fileId, data);
 
   const result = {
     id: fileId,

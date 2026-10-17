@@ -1,42 +1,30 @@
-FROM oven/bun:1 AS deps
+# ---- Build stage: install deps and build the static client ----
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install all dependencies (workspaces: root + client)
-COPY package.json bun.lock ./
+COPY package.json ./
 COPY client/package.json ./client/
-RUN bun install --frozen-lockfile
+COPY package-lock.json* bun.lock* ./
+RUN if [ -f package-lock.json ]; then \
+        npm ci --workspaces --include-workspace-root; \
+    else \
+        corepack enable && bun install --frozen-lockfile; \
+    fi
 
-# Build stage
-FROM oven/bun:1 AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/client/node_modules ./client/node_modules
 COPY . .
 
-# Build backend (NestJS) and client (Vite)
-RUN bun run build
+# Build client (Vite) -> /app/dist/client
+RUN npm run build
 
-# Production image
-FROM oven/bun:1-alpine AS runner
-WORKDIR /app
+# ---- Runtime stage: nginx serving static files ----
+FROM nginx:1.27-alpine AS runner
 
-ENV NODE_ENV=production
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nestjs
+# Static site (includes samples from client/public via Vite copy)
+COPY --from=builder /app/dist/client /usr/share/nginx/html
 
-# Copy built backend and install production deps fresh (avoids broken workspace symlinks)
-COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
-COPY --chown=nestjs:nodejs package.json bun.lock ./
-COPY --from=builder /app/client/package.json ./client/
-RUN bun install --frozen-lockfile --production
+EXPOSE 80
 
-USER nestjs
-
-EXPOSE 3000
-
-ENV PORT=3000
-ENV FORCE_HTTP=true
-
-CMD ["bun", "dist/main.js"]
+CMD ["nginx", "-g", "daemon off;"]

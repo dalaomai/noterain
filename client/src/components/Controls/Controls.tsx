@@ -13,10 +13,16 @@ import {
   X,
   Eye,
   EyeOff,
+  CloudDownload,
+  CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { usePlayback } from '../../hooks/usePlayback';
 import { useMidiFile } from '../../hooks/useMidiFile';
 import { useMidiInput } from '../../hooks/useMidiInput';
+import { useOfflinePack } from '../../hooks/useOfflinePack';
+import { useI18n } from '../../hooks/useI18n';
+import { LOCALE_OPTIONS } from '../../i18n';
 import {
   useMidiStore,
   getMeasureCount,
@@ -59,6 +65,10 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
 
   const { settings, updateSettings } = useMidiStore();
 
+  const offlinePack = useOfflinePack();
+
+  const { locale, t, setLocale } = useI18n();
+
   // Auto-collapse when playback starts
   useEffect(() => {
     if (isPlaying) {
@@ -98,7 +108,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               className={styles.button}
               onClick={() => fileInputRef.current?.click()}
             >
-              Open MIDI
+              {t('openMidi')}
             </button>
             <input
               ref={fileInputRef}
@@ -114,7 +124,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                 value={currentFileId || ''}
                 onChange={(e) => setCurrentFile(e.target.value || null)}
               >
-                <option value="">Select file...</option>
+                <option value="">{t('selectFile')}</option>
                 {files.map((file) => (
                   <option key={file.id} value={file.id} title={file.name}>
                     {truncateFilename(file.name)}
@@ -182,7 +192,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               onClick={() =>
                 updateSettings({ audioEnabled: !settings.audioEnabled })
               }
-              title={settings.audioEnabled ? 'Mute audio' : 'Enable audio'}
+              title={settings.audioEnabled ? t('muteAudio') : t('enableAudio')}
             >
               {settings.audioEnabled ? (
                 <Volume2 size={16} />
@@ -200,7 +210,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                 onChange={(e) =>
                   updateSettings({ volume: parseFloat(e.target.value) / 100 })
                 }
-                title={`Volume: ${Math.round(settings.volume * 100)}%`}
+                title={t('volume', { percent: Math.round(settings.volume * 100) })}
               />
             )}
           </div>
@@ -213,7 +223,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                 theme: settings.theme === 'mocha' ? 'latte' : 'mocha',
               })
             }
-            title={`Switch to ${settings.theme === 'mocha' ? 'light' : 'dark'} theme`}
+            title={settings.theme === 'mocha' ? t('switchToLightTheme') : t('switchToDarkTheme')}
           >
             {settings.theme === 'mocha' ? (
               <Sun size={16} />
@@ -226,7 +236,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           <button
             className={`${styles.button} ${styles.iconButton}`}
             onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? 'Hide controls' : 'Show controls'}
+            title={isExpanded ? t('hideControls') : t('showControls')}
           >
             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -242,13 +252,13 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               className={`${styles.button} ${styles.viewButton} ${!settings.showSheetMusic ? styles.active : ''}`}
               onClick={() => updateSettings({ showSheetMusic: false })}
             >
-              Falling Notes
+              {t('fallingNotes')}
             </button>
             <button
               className={`${styles.button} ${styles.viewButton} ${settings.showSheetMusic ? styles.active : ''}`}
               onClick={() => updateSettings({ showSheetMusic: true })}
             >
-              Sheet Music
+              {t('sheetMusic')}
             </button>
           </div>
 
@@ -260,11 +270,11 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                 checked={waitMode}
                 onChange={toggleWaitMode}
               />
-              Wait for input
+              {t('waitForInput')}
             </label>
             {waitMode && (
               <>
-                <label className={styles.label}>Grace:</label>
+                <label className={styles.label}>{t('grace')}</label>
                 <select
                   className={styles.select}
                   value={settings.waitModeGracePeriod}
@@ -299,7 +309,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                   })
                 }
               />
-              Fit keyboard to song
+              {t('fitKeyboardToSong')}
             </label>
           </div>
 
@@ -315,10 +325,10 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                   })
                 }
               />
-              Play MIDI input
+              {t('playMidiInput')}
               {isLoadingFullVelocity && (
                 <span className={styles.loadingIndicator}>
-                  Loading samples...
+                  {t('loadingSamples')}
                 </span>
               )}
             </label>
@@ -336,13 +346,13 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                   })
                 }
               />
-              Show notes/chords
+              {t('showNotesChords')}
             </label>
           </div>
 
           {/* Speed control */}
           <div className={styles.gridItem}>
-            <label className={styles.label}>Speed:</label>
+            <label className={styles.label}>{t('speed')}</label>
             <input
               type="number"
               className={styles.speedInput}
@@ -363,11 +373,11 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           {/* Loop controls */}
           {currentFile && (
             <div className={styles.gridItem}>
-              <label className={styles.label}>Loop:</label>
+              <label className={styles.label}>{t('loop')}</label>
               <button
                 className={`${styles.button} ${loopEnabled ? styles.active : ''}`}
                 onClick={toggleLoop}
-                title="Toggle loop"
+                title={t('toggleLoop')}
               >
                 <Repeat size={16} />
               </button>
@@ -385,7 +395,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                         setLoopRange(Math.max(0, val), loopEndMeasure);
                       }
                     }}
-                    title="Loop start measure"
+                    title={t('loopStartMeasure')}
                   />
                   <span className={styles.loopSeparator}>-</span>
                   <input
@@ -404,12 +414,12 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                         );
                       }
                     }}
-                    title="Loop end measure"
+                    title={t('loopEndMeasure')}
                   />
                   <button
                     className={styles.button}
                     onClick={clearLoop}
-                    title="Clear loop"
+                    title={t('clearLoop')}
                   >
                     <X size={14} />
                   </button>
@@ -421,44 +431,115 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           {/* Note color mode toggle (only for falling notes view) */}
           {!settings.showSheetMusic && (
             <div className={styles.gridItem}>
-              <label className={styles.label}>Colors:</label>
+              <label className={styles.label}>{t('colors')}</label>
               <button
                 className={`${styles.button} ${settings.noteColorMode === 'track' ? styles.active : ''}`}
                 onClick={() => updateSettings({ noteColorMode: 'track' })}
-                title="Color notes by track"
+                title={t('colorByTrack')}
               >
-                Track
+                {t('track')}
               </button>
               <button
                 className={`${styles.button} ${settings.noteColorMode === 'pitch' ? styles.active : ''}`}
                 onClick={() => updateSettings({ noteColorMode: 'pitch' })}
-                title="Color notes by pitch (C, D, E, etc.)"
+                title={t('colorByPitch')}
               >
-                Pitch
+                {t('pitch')}
               </button>
             </div>
           )}
 
           {/* MIDI input selector */}
           <div className={styles.gridItem}>
-            <label className={styles.label}>MIDI Input:</label>
+            <label className={styles.label}>{t('midiInput')}</label>
             {!isEnabled ? (
-              <span className={styles.warning}>MIDI not available</span>
+              <span className={styles.warning}>{t('midiNotAvailable')}</span>
             ) : inputs.length === 0 ? (
-              <span className={styles.muted}>No devices</span>
+              <span className={styles.muted}>{t('noDevices')}</span>
             ) : (
               <select
                 className={styles.select}
                 value={selectedInput?.id || ''}
                 onChange={(e) => selectInput(e.target.value || null)}
               >
-                <option value="">None</option>
+                <option value="">{t('none')}</option>
                 {inputs.map((device) => (
                   <option key={device.id} value={device.id}>
                     {device.name}
                   </option>
                 ))}
               </select>
+            )}
+          </div>
+
+          {/* Language selector */}
+          <div className={styles.gridItem}>
+            <label className={styles.label}>{t('language')}</label>
+            <select
+              className={styles.select}
+              aria-label={t('language')}
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as 'en' | 'zh')}
+            >
+              {LOCALE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Offline audio pack */}
+          <div className={styles.gridItem}>
+            <label className={styles.label}>{t('offline')}</label>
+            {offlinePack.isComplete ? (
+              <>
+                <span className={styles.offlineReady}>
+                  <CheckCircle2 size={14} /> {t('offlineReady')}
+                </span>
+                <button
+                  className={styles.button}
+                  onClick={offlinePack.removePack}
+                  title={t('removeOfflinePack')}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </>
+            ) : offlinePack.isDownloading ? (
+              <>
+                <span className={styles.offlineProgress}>
+                  {Math.round(offlinePack.progress * 100)}%
+                  {offlinePack.failed > 0 &&
+                    ` (${t('failedCount', { count: offlinePack.failed })})`}
+                </span>
+                <progress
+                  className={styles.offlineProgressBar}
+                  value={offlinePack.progress}
+                  max={1}
+                />
+                <button
+                  className={styles.button}
+                  onClick={offlinePack.cancelDownload}
+                  title={t('cancelDownload')}
+                >
+                  <X size={14} />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className={styles.button}
+                  onClick={offlinePack.startDownload}
+                  title={t('downloadAudioPack')}
+                >
+                  <CloudDownload size={14} /> {t('audioPack')}
+                </button>
+                {offlinePack.cached > 0 && (
+                  <span className={styles.muted}>
+                    {offlinePack.cached}/{offlinePack.total}
+                  </span>
+                )}
+              </>
             )}
           </div>
 
@@ -494,7 +575,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                       .toggleTrackRenderOnly(currentFile.id, track.index)
                   }
                   title={
-                    track.renderOnly ? 'Hide track' : 'Show track visually'
+                    track.renderOnly ? t('hideTrack') : t('showTrackVisually')
                   }
                   disabled={track.enabled}
                 >
@@ -511,7 +592,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                       .getState()
                       .toggleTrackPlayAudio(currentFile.id, track.index)
                   }
-                  title={track.playAudio ? 'Mute track' : 'Play track audio'}
+                  title={track.playAudio ? t('muteTrack') : t('playTrackAudio')}
                 >
                   {track.playAudio ? (
                     <Volume2 size={14} />
@@ -529,7 +610,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                 className={`${styles.button} ${tracksDropdownOpen ? styles.active : ''}`}
                 onClick={() => setTracksDropdownOpen(!tracksDropdownOpen)}
               >
-                Tracks ({currentFile.tracks.length}){' '}
+                {t('tracks')} ({currentFile.tracks.length}){' '}
                 {tracksDropdownOpen ? (
                   <ChevronUp size={14} />
                 ) : (
@@ -567,8 +648,8 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                         }
                         title={
                           track.renderOnly
-                            ? 'Hide track'
-                            : 'Show track visually'
+                            ? t('hideTrack')
+                            : t('showTrackVisually')
                         }
                         disabled={track.enabled}
                       >
@@ -586,7 +667,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                             .toggleTrackPlayAudio(currentFile.id, track.index)
                         }
                         title={
-                          track.playAudio ? 'Mute track' : 'Play track audio'
+                          track.playAudio ? t('muteTrack') : t('playTrackAudio')
                         }
                       >
                         {track.playAudio ? (

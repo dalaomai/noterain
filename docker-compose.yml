@@ -1,13 +1,6 @@
-version: "3.3"
-
 services:
   noterain:
     build: .
     ports:
-      - "3001:3000"
-    environment:
-      - FORCE_HTTP=true
-      - PORT=3000
-    volumes:
-      - ./client/public/samples:/app/dist/client/samples:ro
+      - "3001:80"
     restart: unless-stopped

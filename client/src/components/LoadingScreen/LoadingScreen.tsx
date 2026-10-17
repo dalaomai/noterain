@@ -1,4 +1,5 @@
 import styles from './LoadingScreen.module.css';
+import { useI18n } from '../../hooks/useI18n';
 
 type LoadingPhase = 'downloading' | 'decoding' | 'done';
 
@@ -17,6 +18,7 @@ export function LoadingScreen({
   totalSamples,
   totalLayers,
 }: LoadingScreenProps) {
+  const { t } = useI18n();
   const isDownloading = phase === 'downloading';
   const progress = isDownloading ? downloadProgress : decodeProgress;
   const total = isDownloading ? totalSamples : totalLayers;
@@ -26,7 +28,9 @@ export function LoadingScreen({
     <div className={styles.overlay}>
       <div className={styles.container}>
         <div className={styles.title}>
-          {isDownloading ? 'Downloading Piano Samples' : 'Decoding Piano Samples'}
+          {isDownloading
+            ? t('downloadingPianoSamples')
+            : t('decodingPianoSamples')}
         </div>
         <div className={styles.progressBar}>
           <div
@@ -36,8 +40,8 @@ export function LoadingScreen({
         </div>
         <div className={styles.progressText}>
           {isDownloading
-            ? `${progress} / ${total} samples`
-            : `${progress} / ${total} velocity layers`}
+            ? t('samplesProgress', { progress, total })
+            : t('velocityLayersProgress', { progress, total })}
         </div>
       </div>
     </div>

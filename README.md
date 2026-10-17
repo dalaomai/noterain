@@ -95,32 +95,42 @@ A modern web-based MIDI player and piano learning tool with falling notes visual
 
 ```bash
 # Install dependencies
-bun install
+bun install   # or: npm install
 
 # Start development server
-bun run dev
+bun run dev   # or: npm run dev
 ```
 
-The app runs at `http://localhost:5173` (client) with the API server at `http://localhost:3000`.
+The app runs directly on the host at `http://localhost:5173` — no Docker or backend server required. Vite provides React Fast Refresh and CSS hot module replacement, so source changes appear without a full reload. The server also listens on the host's LAN address for testing from other devices.
 
 ### Production Build
 
 ```bash
-# Build both client and server
-bun run build
+# Build the static client
+bun run build   # or: npm run build
 
-# Start production server
-bun run start:prod
+# Preview the production build locally
+bun run preview # or: npm run preview
 ```
+
+The build output is a fully static site in `dist/client/` — deploy it to any static host (nginx, Cloudflare Pages, Netlify, GitHub Pages, ...).
 
 ### Docker
 
 ```bash
-# Build and run with Docker
-bun run build
+# Build and run with Docker (nginx serving the static site)
 docker build -t noterain .
-docker run -p 3000:3000 noterain
+docker run -p 3000:80 noterain
 ```
+
+## Offline Use
+
+NoteRain is a PWA and works fully offline:
+
+- **App shell** (HTML/JS/CSS) is pre-cached by the service worker on first visit
+- **Offline audio pack**: click "Audio pack" in the settings to download all piano samples (~85MB, 480 files) for complete offline playback
+- **MIDI library** is stored in IndexedDB (no size limits of localStorage)
+- Install as an app via your browser's "Install" prompt for a standalone offline experience
 
 ## Usage
 
@@ -138,13 +148,14 @@ docker run -p 3000:3000 noterain
 - **Audio**: Tone.js with Salamander Grand Piano samples
 - **MIDI**: WebMIDI API, midi-file parser
 - **State**: Zustand with localStorage persistence
-- **Backend**: NestJS (serves static files and API)
+- **Storage**: IndexedDB (MIDI library), Cache Storage (offline audio pack)
+- **Deployment**: Fully static site, served by nginx in Docker
 
 ## Project Structure
 
 ```
-piano/
-├── client/                 # React frontend
+noterain/
+├── client/                 # React frontend (the whole app)
 │   ├── src/
 │   │   ├── components/     # UI components
 │   │   │   ├── Controls/   # Playback controls, settings
@@ -154,10 +165,11 @@ piano/
 │   │   ├── hooks/          # Custom React hooks
 │   │   ├── lib/            # MIDI parsing, audio
 │   │   ├── stores/         # Zustand state management
-│   │   └── types/          # TypeScript types
-│   └── public/             # Static assets
-├── src/                    # NestJS backend
-└── dist/                   # Production build output
+│   │   ├── types/          # TypeScript types
+│   │   └── utils/          # IndexedDB storage, offline pack
+│   └── public/             # Static assets (incl. piano samples)
+├── nginx.conf              # nginx config for the Docker image
+└── dist/                   # Production build output (static site)
 ```
 
 ## Attributions

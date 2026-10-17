@@ -3,11 +3,11 @@ import type {
   MidiFile,
   MidiTrack,
   MidiNote,
-  TempoChange,
   TimeSignature,
   KeySignature,
 } from '../../types/midi';
 import { generateId, saveRawMidiData } from '../../utils/storage';
+import { buildMidiTempoMap, midiTicksToSeconds, type MidiTempoPoint } from './timing';
 
 
 /** Default colors for tracks */
@@ -28,10 +28,11 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
   const parsed = parseMidi(uint8Array);
 
   const ticksPerBeat = parsed.header.ticksPerBeat || 480;
-  const tempos = extractTempos(parsed, ticksPerBeat);
+  const tempoMap = buildMidiTempoMap(parsed, ticksPerBeat);
+  const tempos = tempoMap.map(({ time, bpm }) => ({ time, bpm }));
   const timeSignature = extractTimeSignature(parsed);
   const keySignature = extractKeySignature(parsed);
-  const tracks = extractTracks(parsed, ticksPerBeat, tempos);
+  const tracks = extractTracks(parsed, tempoMap);
   const duration = calculateDuration(tracks);
 
   const fileId = generateId();
@@ -91,42 +92,6 @@ function extractTitle(midi: MidiData): string | undefined {
   return title;
 }
 
-/** Extract tempo changes from MIDI data */
-function extractTempos(midi: MidiData, ticksPerBeat: number): TempoChange[] {
-  const tempos: TempoChange[] = [];
-  let currentTick = 0;
-  let currentTempo = 120; // Default 120 BPM
-  let currentTime = 0;
-
-  // Tempo events are usually in the first track
-  for (const track of midi.tracks) {
-    currentTick = 0;
-    for (const event of track) {
-      currentTick += event.deltaTime;
-      if (event.type === 'setTempo') {
-        // Calculate time at this point
-        const ticksSinceLast = currentTick;
-        const microsecondsPerBeat = event.microsecondsPerBeat;
-        const bpm = 60000000 / microsecondsPerBeat;
-
-        // Convert ticks to time using previous tempo
-        const secondsPerTick = 60 / (currentTempo * ticksPerBeat);
-        currentTime = ticksSinceLast * secondsPerTick;
-
-        tempos.push({ time: currentTime, bpm });
-        currentTempo = bpm;
-      }
-    }
-  }
-
-  // Ensure we have at least one tempo
-  if (tempos.length === 0) {
-    tempos.push({ time: 0, bpm: 120 });
-  }
-
-  return tempos;
-}
-
 /** Extract time signature from MIDI data */
 function extractTimeSignature(midi: MidiData): TimeSignature {
   for (const track of midi.tracks) {
@@ -157,29 +122,10 @@ function extractKeySignature(midi: MidiData): KeySignature {
   return { key: 0, scale: 0 }; // Default C major
 }
 
-/** Convert ticks to seconds using tempo map */
-function ticksToSeconds(
-  ticks: number,
-  ticksPerBeat: number,
-  tempos: TempoChange[],
-): number {
-  if (tempos.length === 0) {
-    return (ticks / ticksPerBeat) * (60 / 120);
-  }
-
-  // Simple conversion using first tempo (for now)
-  // TODO: Handle tempo changes mid-song
-  const bpm = tempos[0].bpm;
-  const secondsPerBeat = 60 / bpm;
-  const secondsPerTick = secondsPerBeat / ticksPerBeat;
-  return ticks * secondsPerTick;
-}
-
 /** Extract tracks with notes from MIDI data */
 function extractTracks(
   midi: MidiData,
-  ticksPerBeat: number,
-  tempos: TempoChange[],
+  tempoMap: MidiTempoPoint[],
 ): MidiTrack[] {
   const tracks: MidiTrack[] = [];
 
@@ -215,8 +161,8 @@ function extractTracks(
         const noteOn = noteOnTimes.get(key);
 
         if (noteOn) {
-          const startTime = ticksToSeconds(noteOn.tick, ticksPerBeat, tempos);
-          const endTime = ticksToSeconds(currentTick, ticksPerBeat, tempos);
+          const startTime = midiTicksToSeconds(noteOn.tick, tempoMap);
+          const endTime = midiTicksToSeconds(currentTick, tempoMap);
 
           notes.push({
             noteNumber: event.noteNumber,

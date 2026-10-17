@@ -8,6 +8,11 @@ import {
 } from '../../lib/musicxml/parser';
 import { useMidiStore } from '../../stores/midiStore';
 import { followNoteKey } from '../../lib/followMode';
+import {
+  buildScoreCursorRuns,
+  getScoreCursorPosition,
+  type EngravedMeasureGeometry,
+} from '../../lib/scoreCursor';
 import styles from './MusicXmlSheet.module.css';
 
 const STAGE_LABELS: Record<MusicXmlRenderStage, TranslationKeys> = {
@@ -56,6 +61,7 @@ function scrollScoreSystemIntoView(
 export function MusicXmlSheet() {
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightsRef = useRef<HTMLDivElement>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
   const currentFile = useMidiStore((state) => state.getCurrentFile());
   const isPlaying = useMidiStore((state) => state.playback.isPlaying);
@@ -113,21 +119,40 @@ export function MusicXmlSheet() {
     if (!container || !currentFile) return;
     const notes = currentFile.tracks.flatMap((track) => track.notes);
     const byPitch = new Map<number, typeof notes>();
-    for (const note of notes) { const group = byPitch.get(note.noteNumber) ?? [];group.push(note);byPitch.set(note.noteNumber, group); }
-    const staffTracks = currentFile.tracks.filter((track) => track.notes.length > 0);
-    const onsets = new Map<string, number[]>();
-    for (const event of timeMap) for (const id of event.on ?? []) {
-      const times = onsets.get(id) ?? [];
-      times.push(event.tstamp / 1000);onsets.set(id, times);
+    for (const note of notes) {
+      const group = byPitch.get(note.noteNumber) ?? [];
+      group.push(note);
+      byPitch.set(note.noteNumber, group);
     }
-    for (const element of container.querySelectorAll<SVGGElement>('.note[data-midi-pitch]')) {
+    const staffTracks = currentFile.tracks.filter(
+      (track) => track.notes.length > 0,
+    );
+    const onsets = new Map<string, number[]>();
+    for (const event of timeMap)
+      for (const id of event.on ?? []) {
+        const times = onsets.get(id) ?? [];
+        times.push(event.tstamp / 1000);
+        onsets.set(id, times);
+      }
+    for (const element of container.querySelectorAll<SVGGElement>(
+      '.note[data-midi-pitch]',
+    )) {
       const pitch = Number(element.dataset.midiPitch);
       const times = onsets.get(element.id) ?? [];
-      const staffTrack = staffTracks[Number(element.dataset.midiStaff) - 1]?.index;
-      const matches = (byPitch.get(pitch) ?? []).filter((note) => times.some((time) => Math.abs(time - note.startTime) < 0.005));
-      const preferred = staffTrack !== undefined ? matches.filter((note) => note.track === staffTrack) : [];
+      const staffTrack =
+        staffTracks[Number(element.dataset.midiStaff) - 1]?.index;
+      const matches = (byPitch.get(pitch) ?? []).filter((note) =>
+        times.some((time) => Math.abs(time - note.startTime) < 0.005),
+      );
+      const preferred =
+        staffTrack !== undefined
+          ? matches.filter((note) => note.track === staffTrack)
+          : [];
       const head = element.querySelector<SVGGElement>('.notehead');
-      if (head) head.dataset.followNote = (preferred.length ? preferred : matches).map(followNoteKey).join(' ');
+      if (head)
+        head.dataset.followNote = (preferred.length ? preferred : matches)
+          .map(followNoteKey)
+          .join(' ');
     }
   }, [currentFile, pages, timeMap]);
 
@@ -234,7 +259,69 @@ export function MusicXmlSheet() {
     let animationFrame = 0;
     let followedSystem: Element | null = null;
     const toolbar = document.getElementById('playback-toolbar');
+    const cursorElement = cursorRef.current;
     let toolbarWasCollapsed = toolbar?.inert;
+
+    const containerRect = container.getBoundingClientRect();
+    const contentLeft = containerRect.left - container.scrollLeft;
+    const contentTop = containerRect.top - container.scrollTop;
+    const elements = new Map(
+      Array.from(container.querySelectorAll<SVGElement>('[id]'), (element) => [
+        element.id,
+        element,
+      ]),
+    );
+    const measureGeometry = new Map<string, EngravedMeasureGeometry>();
+    const onsetPositions = new Map<string, number>();
+    const cursorRuns = buildScoreCursorRuns(
+      timeMap,
+      (id) => {
+        const cached = measureGeometry.get(id);
+        if (cached) return cached;
+        const measure = elements.get(id);
+        const system = measure?.closest<SVGElement>('.system');
+        if (!measure || !system) return undefined;
+        const rect = measure.getBoundingClientRect();
+        const staves = Array.from(
+          system.querySelectorAll<SVGElement>('.staff'),
+          (staff) => staff.getBoundingClientRect(),
+        );
+        const systemRect = system.getBoundingClientRect();
+        const top = staves.length
+          ? Math.min(...staves.map((staff) => staff.top))
+          : systemRect.top;
+        const bottom = staves.length
+          ? Math.max(...staves.map((staff) => staff.bottom))
+          : systemRect.bottom;
+        const barlines = Array.from(
+          measure.querySelectorAll<SVGElement>('.barLine'),
+          (barline) => barline.getBoundingClientRect().right,
+        );
+        const geometry = {
+          systemId: system.id,
+          left: rect.left - contentLeft,
+          right:
+            (barlines.length ? Math.max(...barlines) : rect.right) -
+            contentLeft,
+          top: top - contentTop - 4,
+          height: bottom - top + 8,
+        };
+        measureGeometry.set(id, geometry);
+        return geometry;
+      },
+      (id) => {
+        if (onsetPositions.has(id)) return onsetPositions.get(id);
+        const element = elements.get(id);
+        if (!element) return undefined;
+        const rect = (
+          element.querySelector('.notehead') ?? element
+        ).getBoundingClientRect();
+        const x = rect.left + rect.width / 2 - contentLeft;
+        onsetPositions.set(id, x);
+        return x;
+      },
+      currentFile?.duration ?? 0,
+    );
 
     const clearHighlights = () => {
       for (const id of activeIdsRef.current) {
@@ -248,6 +335,17 @@ export function MusicXmlSheet() {
 
     const update = () => {
       const currentMillis = useMidiStore.getState().playback.currentTime * 1000;
+      const cursor = getScoreCursorPosition(cursorRuns, currentMillis / 1000);
+      if (cursorElement) {
+        if (cursor && useMidiStore.getState().settings.showPlaybackCursor) {
+          cursorElement.style.left = `${cursor.x}px`;
+          cursorElement.style.top = `${cursor.top}px`;
+          cursorElement.style.height = `${cursor.height}px`;
+          cursorElement.style.display = 'block';
+        } else {
+          cursorElement.style.display = 'none';
+        }
+      }
       let eventIndex = -1;
 
       // Timemap is sorted. Binary search the latest event at/before playback.
@@ -300,7 +398,8 @@ export function MusicXmlSheet() {
 
       if (isPlaying && eventIndex >= 0 && (eventChanged || toolbarChanged)) {
         const frame = playbackFrames[eventIndex];
-        const focusId = frame.activeIds[0] ?? frame.measureId;
+        const focusId =
+          cursor?.focusId ?? frame.activeIds[0] ?? frame.measureId;
         const focusElement = focusId
           ? container.querySelector<SVGElement>(`#${CSS.escape(focusId)}`)
           : null;
@@ -324,9 +423,17 @@ export function MusicXmlSheet() {
     return () => {
       cancelAnimationFrame(animationFrame);
       clearHighlights();
+      if (cursorElement) cursorElement.style.display = 'none';
       eventIndexRef.current = -1;
     };
-  }, [isPlaying, pages, playbackFrames, timeMap, waitMode]);
+  }, [
+    currentFile?.duration,
+    isPlaying,
+    pages,
+    playbackFrames,
+    timeMap,
+    waitMode,
+  ]);
 
   return (
     <div
@@ -336,6 +443,12 @@ export function MusicXmlSheet() {
       onClick={handleScoreClick}
     >
       <div ref={highlightsRef} className={styles.highlights} />
+      <div
+        ref={cursorRef}
+        className={styles.playbackCursor}
+        data-playback-cursor
+        aria-hidden="true"
+      />
       {error && <div className={styles.status}>{error}</div>}
       {!error && pages.length === 0 && (
         <div className={styles.status}>

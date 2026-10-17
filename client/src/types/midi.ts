@@ -162,6 +162,8 @@ export interface Settings {
   rightHandColor: string;
   /** Show sheet music view */
   showSheetMusic: boolean;
+  /** Show the playback position cursor in both score views. */
+  showPlaybackCursor: boolean;
   /** Prefer the original MusicXML engraving instead of inferred notation */
   showOriginalMusicXml: boolean;
   /** MusicXML engraving density */
@@ -205,6 +207,7 @@ export const DEFAULT_SETTINGS: Settings = {
   leftHandColor: '#89b4fa', // Catppuccin blue
   rightHandColor: '#a6e3a1', // Catppuccin green
   showSheetMusic: false,
+  showPlaybackCursor: true,
   showOriginalMusicXml: true,
   scoreDensity: 'standard',
   expandMusicXmlRepeats: false,

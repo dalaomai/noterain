@@ -3,6 +3,7 @@
   inset: 0 0 var(--piano-keyboard-collapsed-height, 44px);
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--canvas-bg);
   padding: 16px;
   box-sizing: border-box;
@@ -78,6 +79,17 @@
   inset: 0;
   z-index: 3;
   pointer-events: none;
+}
+
+.playbackCursor {
+  display: none;
+  position: absolute;
+  width: 2px;
+  background: var(--ctp-red);
+  opacity: 0.8;
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: 0 0 8px var(--ctp-red);
 }
 
 .noteHighlight {

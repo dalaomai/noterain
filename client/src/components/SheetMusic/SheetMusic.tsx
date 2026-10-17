@@ -14,6 +14,13 @@ import {
 import { useMidiStore } from '../../stores/midiStore';
 import type { MidiNote, MidiTrack } from '../../types/midi';
 import { followNoteKey } from '../../lib/followMode';
+import {
+  BARLINE_NOTE_GAP,
+  getScoreTimeX,
+  getUniformScoreSpacing,
+  layoutScoreMeasures,
+  SCORE_DENSITIES,
+} from '../../lib/scoreLayout';
 import styles from './SheetMusic.module.css';
 
 interface SheetMusicProps {
@@ -388,6 +395,44 @@ interface NotePosition {
   endTime: number;
 }
 
+interface MeasurePosition {
+  measureIndex: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  noteStartX: number;
+  noteEndX: number;
+}
+
+function getScoreColumns(formatter: Formatter, voices: Voice[], beats: number) {
+  const contexts = formatter.getTickContexts();
+  if (!contexts) return [];
+  const ticksPerBeat = voices[0].getTotalTicks().value() / beats;
+  return contexts.list.map((tick) => {
+    const context = contexts.map[tick];
+    const metrics = context.getMetrics();
+    return {
+      context,
+      beat: tick / contexts.resolutionMultiplier / ticksPerBeat,
+      left: metrics.totalLeftPx,
+      right: metrics.notePx + metrics.totalRightPx,
+    };
+  });
+}
+
+/** Keep the drawn duration, but align every voice to the same onset grid. */
+function setSpacingDuration(
+  note: StaveNote | GhostNote,
+  duration: string,
+  beats: number,
+) {
+  note.applyTickMultiplier(
+    Math.round(beats * 8),
+    Math.round(durationToBeats(duration) * 8),
+  );
+}
+
 /**
  * Normalize unusual MIDI time signatures to standard notation.
  * Many MIDI files have incorrectly encoded denominators (e.g., 4/16 instead of 4/4).
@@ -542,9 +587,12 @@ function createVoicesForMeasure(
     const staveNotes: (StaveNote | GhostNote)[] = [];
     let currentBeat = 0;
 
-    for (const beatKey of unifiedBeatGrid) {
+    for (const [beatIndex, beatKey] of unifiedBeatGrid.entries()) {
       const noteBeat = beatKey / 1000;
       if (noteBeat >= quarterNotesPerMeasure) continue;
+      const nextBeat =
+        (unifiedBeatGrid[beatIndex + 1] ?? quarterNotesPerMeasure * 1000) /
+        1000;
 
       // Add ghost notes to fill gap
       const gap = noteBeat - currentBeat;
@@ -585,13 +633,14 @@ function createVoicesForMeasure(
             clef,
             autoStem: true,
           });
+          setSpacingDuration(staveNote, duration, nextBeat - noteBeat);
           accidentals.forEach((acc, i) => {
             if (acc) {
               staveNote.addModifier(new Accidental(acc), i);
             }
           });
           staveNotes.push(staveNote);
-          currentBeat = noteBeat + durationToBeats(duration);
+          currentBeat = nextBeat;
         } catch {
           // Skip notes that can't be rendered
         }
@@ -599,8 +648,9 @@ function createVoicesForMeasure(
         const ghostDuration = beatDurations.get(beatKey) || '8';
         try {
           const ghostNote = new GhostNote({ duration: ghostDuration });
+          setSpacingDuration(ghostNote, ghostDuration, nextBeat - noteBeat);
           staveNotes.push(ghostNote);
-          currentBeat = noteBeat + durationToBeats(ghostDuration);
+          currentBeat = nextBeat;
         } catch {
           // Skip notes that can't be created
         }
@@ -647,7 +697,10 @@ export function SheetMusic({
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const highlightsRef = useRef<HTMLDivElement>(null);
   const progressLineRef = useRef<HTMLDivElement>(null);
-  const [renderedHeight, setRenderedHeight] = useState(0);
+  const [renderedLayout, setRenderedLayout] = useState<{
+    measures: MeasurePosition[];
+    snapPoints: number[];
+  }>({ measures: [], snapPoints: [] });
   const [viewportWidth, setViewportWidth] = useState(1200);
 
   // Store note positions for highlighting
@@ -656,6 +709,7 @@ export function SheetMusic({
   // Track user scrolling to prevent auto-scroll conflict
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef<number | undefined>(undefined);
+  const lastScrollTop = useRef(0);
 
   // Store line layout info for scroll-to-seek calculation
   const linesRef = useRef<
@@ -663,21 +717,14 @@ export function SheetMusic({
   >([]);
 
   // Store measure positions for click-to-set-loop detection
-  const measurePositionsRef = useRef<
-    {
-      measureIndex: number;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }[]
-  >([]);
+  const measurePositionsRef = useRef<MeasurePosition[]>([]);
 
   // Subscribe to current file and theme for re-rendering
   const currentFileId = useMidiStore((state) => state.currentFileId);
   const files = useMidiStore((state) => state.files);
   const currentFile = files.find((f) => f.id === currentFileId) || null;
   const theme = useMidiStore((state) => state.settings.theme);
+  const scoreDensity = useMidiStore((state) => state.settings.scoreDensity);
   const seek = useMidiStore((state) => state.seek);
   const loopEnabled = useMidiStore((state) => state.playback.loopEnabled);
   const loopStartMeasure = useMidiStore(
@@ -695,7 +742,7 @@ export function SheetMusic({
     if (!container) return;
 
     const updateWidth = () => {
-      const nextWidth = Math.max(320, Math.floor(container.clientWidth) - 2);
+      const nextWidth = Math.max(1, Math.floor(container.clientWidth) - 32);
       setViewportWidth((current) =>
         Math.abs(current - nextWidth) >= 2 ? nextWidth : current,
       );
@@ -711,6 +758,8 @@ export function SheetMusic({
   useEffect(() => {
     const container = svgContainerRef.current;
     if (!container) return;
+    isUserScrolling.current = false;
+    clearTimeout(scrollTimeout.current);
 
     if (!currentFile || currentFile.tracks.length === 0) {
       const existingSvg = container.querySelector('svg');
@@ -728,7 +777,9 @@ export function SheetMusic({
     );
 
     if (enabledTracks.length === 0) {
-      setRenderedHeight(0);
+      notePositionsRef.current = [];
+      measurePositionsRef.current = [];
+      setRenderedLayout({ measures: [], snapPoints: [] });
       return;
     }
 
@@ -780,17 +831,28 @@ export function SheetMusic({
     const measureCount = trackMeasures[0]?.measures.length || 0;
 
     // Layout constants
-    const totalAvailableWidth = viewportWidth;
+    const density = SCORE_DENSITIES[scoreDensity];
     const leftMargin = 20;
-    const singleStaveHeight = 80;
-    const trackSpacing = 20;
+    const singleStaveHeight = density.staveHeight;
+    const trackSpacing = density.systemGap;
     const topMargin = 40;
-    const clefKeyTimeWidth = 80; // Extra space for clef, key sig, time sig on first measure of line
-    const measurePadding = 20; // Padding between measures
-
-    // ============ FIRST PASS: Calculate max minimum width across all measures ============
-    let maxMinWidth = 40; // minimum baseline
+    const plainStave = new Stave(0, 0, 100);
+    const clefKeyTimeWidth = Math.max(
+      ...trackMeasures.map(({ clef }) => {
+        const stave = new Stave(0, 0, 200);
+        stave
+          .addClef(clef)
+          .addKeySignature(vexFlowKey)
+          .addTimeSignature(`${beatsPerMeasure}/${beatValue}`);
+        return stave.getNoteStartX() - plainStave.getNoteStartX();
+      }),
+    );
+    // Measure the needed beat width, then share one time scale across all rows.
+    const measureColumns: ReturnType<typeof getScoreColumns>[] = [];
+    const linePadding = { left: 0, right: 0 };
+    let maxModifierLeft = 0;
     for (let measureIndex = 0; measureIndex < measureCount; measureIndex++) {
+      let spacing = getUniformScoreSpacing([], quarterNotesPerMeasure);
       const { voices } = createVoicesForMeasure(
         trackMeasures,
         measureIndex,
@@ -805,32 +867,49 @@ export function SheetMusic({
         try {
           const formatter = new Formatter();
           voices.forEach((v) => formatter.joinVoices([v]));
-          const minWidth = formatter.preCalculateMinTotalWidth(voices);
-          maxMinWidth = Math.max(maxMinWidth, minWidth);
+          formatter.preCalculateMinTotalWidth(voices);
+          const columns = getScoreColumns(
+            formatter,
+            voices,
+            quarterNotesPerMeasure,
+          );
+          maxModifierLeft = Math.max(
+            maxModifierLeft,
+            ...columns.map((column) => column.left),
+          );
+          measureColumns[measureIndex] = columns;
+          spacing = getUniformScoreSpacing(columns, quarterNotesPerMeasure);
         } catch {
           // ignore
         }
       }
-    }
-    // ============ LAYOUT: Group measures into lines ============
-    const availableWidth =
-      totalAvailableWidth - leftMargin * 2 - clefKeyTimeWidth;
-    // Calculate base measures per line, then add extra to compress spacing
-    const baseMeasuresPerLine = Math.floor(
-      availableWidth / (maxMinWidth + measurePadding),
-    );
-    const extraMeasures = 2; // Add extra measures per line to compress notes
-    const measuresPerLine = Math.max(1, baseMeasuresPerLine + extraMeasures);
-
-    const lines: number[][] = [];
-    for (let i = 0; i < measureCount; i += measuresPerLine) {
-      lines.push(
-        Array.from(
-          { length: Math.min(measuresPerLine, measureCount - i) },
-          (_, j) => i + j,
-        ),
+      linePadding.left = Math.max(
+        linePadding.left,
+        spacing.left + Stave.defaultPadding + plainStave.getNoteStartX(),
+      );
+      linePadding.right = Math.max(
+        linePadding.right,
+        spacing.right + Stave.defaultPadding,
       );
     }
+    const measureWidths = Array.from(
+      { length: measureCount },
+      (_, index) =>
+        getUniformScoreSpacing(
+          measureColumns[index] ?? [],
+          quarterNotesPerMeasure,
+          maxModifierLeft,
+        ).timeWidth,
+    );
+    const { scale, width, lines: layoutLines } = layoutScoreMeasures(
+      measureWidths,
+      viewportWidth,
+      clefKeyTimeWidth,
+      leftMargin,
+      { ...linePadding, boundary: maxModifierLeft + BARLINE_NOTE_GAP },
+      scoreDensity,
+    );
+    const lines = layoutLines.map((line) => line.measureIndices);
 
     // Store line info for scroll-to-seek calculation
     let cumulativeMeasures = 0;
@@ -846,12 +925,12 @@ export function SheetMusic({
     const lineCount = lines.length;
     const totalHeight = lineCount * systemHeight + topMargin * 2;
 
-    setRenderedHeight(totalHeight);
-
     // Create renderer
     const renderer = new Renderer(container, Renderer.Backends.SVG);
-    renderer.resize(totalAvailableWidth, totalHeight);
+    container.style.width = `${width * scale}px`;
+    renderer.resize(width * scale, totalHeight * scale);
     const context = renderer.getContext();
+    context.scale(scale, scale);
     context.setFont('Arial', 10);
 
     // Set theme-aware colors for notation elements (matching NotesOverlay exactly)
@@ -864,25 +943,13 @@ export function SheetMusic({
 
     // Collect note positions for highlighting
     const notePositions: NotePosition[] = [];
-    const measurePositions: {
-      measureIndex: number;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }[] = [];
+    const measurePositions: MeasurePosition[] = [];
     const secondsPerQuarterNote = 60 / bpm;
 
-    // ============ SECOND PASS: Render each line with uniform measure widths ============
+    // Render the measured rows, aligning all voices to one time axis per bar.
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const measureIndices = lines[lineIndex];
       const baseY = topMargin + lineIndex * systemHeight;
-
-      // Calculate uniform width for all measures on this line
-      const totalLineWidth = totalAvailableWidth - leftMargin * 2;
-      const numMeasures = measureIndices.length;
-      // Distribute width equally, accounting for clef/key/time on first measure
-      const baseStaveWidth = (totalLineWidth - clefKeyTimeWidth) / numMeasures;
 
       let x = leftMargin;
 
@@ -890,19 +957,20 @@ export function SheetMusic({
         const measureIndex = measureIndices[posInLine];
         const isFirstInLine = posInLine === 0;
 
-        // All measures get equal width, first one gets extra space for clef/key/time
-        const staveWidth = isFirstInLine
-          ? baseStaveWidth + clefKeyTimeWidth
-          : baseStaveWidth;
+        const line = layoutLines[lineIndex];
+        const staveWidth = line.widths[posInLine];
 
         // Store measure position for click detection
-        measurePositions.push({
+        const measurePosition = {
           measureIndex,
           x,
           y: baseY,
           width: staveWidth,
           height: systemHeight,
-        });
+          noteStartX: line.timeStartX + posInLine * line.timeWidth,
+          noteEndX: line.timeStartX + (posInLine + 1) * line.timeWidth,
+        };
+        measurePositions.push(measurePosition);
 
         const staves: Stave[] = [];
         const voices: Voice[] = [];
@@ -994,9 +1062,12 @@ export function SheetMusic({
           }[] = [];
           let currentBeat = 0;
 
-          for (const beatKey of unifiedBeatGrid) {
+          for (const [beatIndex, beatKey] of unifiedBeatGrid.entries()) {
             const noteBeat = beatKey / 1000;
             if (noteBeat >= quarterNotesPerMeasure) continue;
+            const nextBeat =
+              (unifiedBeatGrid[beatIndex + 1] ??
+                quarterNotesPerMeasure * 1000) / 1000;
 
             // Fill gap with ghost notes
             const gap = noteBeat - currentBeat;
@@ -1041,6 +1112,7 @@ export function SheetMusic({
                   clef,
                   autoStem: true,
                 });
+                setSpacingDuration(staveNote, duration, nextBeat - noteBeat);
                 staveNote.setStyle({
                   fillStyle: noteColor,
                   strokeStyle: noteColor,
@@ -1055,15 +1127,21 @@ export function SheetMusic({
                   staveNoteIndex: staveNotes.length - 1,
                   notes,
                 });
-                currentBeat = noteBeat + durationToBeats(duration);
+                currentBeat = nextBeat;
               } catch {
                 /* skip */
               }
             } else {
               const ghostDuration = beatDurations.get(beatKey) || '8';
               try {
-                staveNotes.push(new GhostNote({ duration: ghostDuration }));
-                currentBeat = noteBeat + durationToBeats(ghostDuration);
+                const ghostNote = new GhostNote({ duration: ghostDuration });
+                setSpacingDuration(
+                  ghostNote,
+                  ghostDuration,
+                  nextBeat - noteBeat,
+                );
+                staveNotes.push(ghostNote);
+                currentBeat = nextBeat;
               } catch {
                 /* skip */
               }
@@ -1106,14 +1184,28 @@ export function SheetMusic({
         // Format and draw voices
         if (voices.length > 0) {
           try {
-            const noteStartX = staves[0].getNoteStartX();
-            const noteEndX = Math.min(...staves.map((s) => s.getNoteEndX()));
-            const endPadding = 15; // Padding at end of measure
-            const usableWidth = noteEndX - noteStartX - endPadding;
-
-            const formatter = new Formatter({ softmaxFactor: 10 }); // Higher value = tighter spacing
+            const formatter = new Formatter();
             voices.forEach((v) => formatter.joinVoices([v]));
-            formatter.format(voices, Math.max(usableWidth, 20));
+            formatter.format(voices);
+            const columns = getScoreColumns(
+              formatter,
+              voices,
+              quarterNotesPerMeasure,
+            );
+            // VexFlow adds only the leading padding to note positions.
+            // defaultPadding also includes trailing space, shifting notes
+            // towards the preceding barline if it is subtracted here.
+            const noteOffset =
+              measurePosition.noteStartX -
+              staves[0].getNoteStartX() -
+              (Stave.defaultPadding - Stave.rightPadding);
+            const timeWidth =
+              measurePosition.noteEndX - measurePosition.noteStartX;
+            for (const { context: tickContext, beat } of columns) {
+              tickContext.setX(
+                noteOffset + (beat / quarterNotesPerMeasure) * timeWidth,
+              );
+            }
 
             voiceData.forEach(({ voice, stave, staveNotes, noteTimings }) => {
               const beamGroups = getBeamGroupsForTimeSignature(
@@ -1134,16 +1226,29 @@ export function SheetMusic({
                 try {
                   const staveNote = staveNotes[timing.staveNoteIndex];
                   if (staveNote instanceof StaveNote) {
-                    const heads = staveNote.getSVGElement()?.querySelectorAll<SVGGElement>('.vf-notehead');
+                    const noteElement = staveNote.getSVGElement();
+                    if (noteElement)
+                      noteElement.dataset.playbackTime = String(
+                        timing.startTime,
+                      );
+                    const heads = staveNote
+                      .getSVGElement()
+                      ?.querySelectorAll<SVGGElement>('.vf-notehead');
                     const ys = staveNote.getYs();
                     timing.notes.forEach((note, i) => {
                       const head = heads?.[i];
                       if (!head) return;
                       const glyph = head.querySelector('text');
-                      const headX = glyph ? Number(glyph.getAttribute('x')) + staveNote.noteHeads[i].getWidth() / 2 : (staveNote.getNoteHeadBeginX() + staveNote.getNoteHeadEndX()) / 2;
+                      const headX = glyph
+                        ? Number(glyph.getAttribute('x')) +
+                          staveNote.noteHeads[i].getWidth() / 2
+                        : (staveNote.getNoteHeadBeginX() +
+                            staveNote.getNoteHeadEndX()) /
+                          2;
                       head.dataset.followNote = followNoteKey(note);
-                      head.dataset.followX = String(headX);
-                      head.dataset.followY = String(ys[i]);
+                      head.dataset.playbackTime = String(note.startTime);
+                      head.dataset.followX = String(headX * scale);
+                      head.dataset.followY = String(ys[i] * scale);
                     });
                   }
                   const noteX = staveNote.getAbsoluteX();
@@ -1218,30 +1323,55 @@ export function SheetMusic({
     }
 
     // Store note positions for highlighting
-    notePositionsRef.current = notePositions;
+    notePositionsRef.current = notePositions.map((pos) => ({
+      ...pos,
+      x: pos.x * scale,
+      y: pos.y * scale,
+      width: pos.width * scale,
+      height: pos.height * scale,
+    }));
 
     // Store measure positions for loop click detection
-    measurePositionsRef.current = measurePositions;
+    measurePositionsRef.current = measurePositions.map((pos) => ({
+      ...pos,
+      x: pos.x * scale,
+      y: pos.y * scale,
+      width: pos.width * scale,
+      height: pos.height * scale,
+      noteStartX: pos.noteStartX * scale,
+      noteEndX: pos.noteEndX * scale,
+    }));
+    setRenderedLayout({
+      measures: measurePositionsRef.current,
+      snapPoints: lines.map((_, i) => i * systemHeight * scale),
+    });
 
     // Store layout info for progress tracking
     const secondsPerMeasure = (60 / bpm) * beatsPerMeasure * (4 / beatValue);
     container.dataset.measureCount = String(measureCount);
-    container.dataset.systemHeight = String(systemHeight);
-    container.dataset.leftMargin = String(leftMargin);
-    container.dataset.topMargin = String(topMargin);
+    container.dataset.systemHeight = String(systemHeight * scale);
+    container.dataset.leftMargin = String(leftMargin * scale);
+    container.dataset.topMargin = String(topMargin * scale);
     container.dataset.secondsPerMeasure = String(secondsPerMeasure);
     container.dataset.trackCount = String(enabledTracks.length);
-    container.dataset.singleStaveHeight = String(singleStaveHeight);
+    container.dataset.singleStaveHeight = String(singleStaveHeight * scale);
     container.dataset.lineCount = String(lines.length);
-  }, [currentFile, beatsPerMeasureProp, theme, viewportWidth]);
+  }, [currentFile, beatsPerMeasureProp, theme, viewportWidth, scoreDensity]);
 
   // Scroll-to-seek: convert scroll position to playback time (only when paused)
   const handleScroll = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const previousTop = lastScrollTop.current;
+    lastScrollTop.current = container.scrollTop;
+    // Panning a dense bar sideways must not seek to the start of its row.
+    if (Math.abs(container.scrollTop - previousTop) < 1) return;
+
     // Only seek when playback is paused - don't interfere with auto-scroll during playback
     const isPlaying = useMidiStore.getState().playback.isPlaying;
-    if (isPlaying) return;
+    // Reflow and seeking can generate native scroll events without user input.
+    if (isPlaying || !isUserScrolling.current) return;
 
-    const container = containerRef.current;
     const svgContainer = svgContainerRef.current;
     if (!container || !svgContainer || !currentFile) return;
 
@@ -1289,8 +1419,34 @@ export function SheetMusic({
     const container = containerRef.current;
     if (!container) return;
 
+    const takeOverScroll = () => {
+      isUserScrolling.current = true;
+      clearTimeout(scrollTimeout.current);
+      scrollTimeout.current = window.setTimeout(() => {
+        isUserScrolling.current = false;
+      }, 150);
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.buttons) takeOverScroll();
+    };
     container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    container.addEventListener('wheel', takeOverScroll, { passive: true });
+    container.addEventListener('pointerdown', takeOverScroll);
+    container.addEventListener('pointermove', handlePointerMove);
+    container.addEventListener('touchstart', takeOverScroll, { passive: true });
+    container.addEventListener('touchmove', takeOverScroll, { passive: true });
+    container.addEventListener('keydown', takeOverScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('wheel', takeOverScroll);
+      container.removeEventListener('pointerdown', takeOverScroll);
+      container.removeEventListener('pointermove', handlePointerMove);
+      container.removeEventListener('touchstart', takeOverScroll);
+      container.removeEventListener('touchmove', takeOverScroll);
+      container.removeEventListener('keydown', takeOverScroll);
+      isUserScrolling.current = false;
+      clearTimeout(scrollTimeout.current);
+    };
   }, [handleScroll]);
 
   // Highlight active notes and auto-scroll
@@ -1301,6 +1457,7 @@ export function SheetMusic({
 
     let animationId: number;
     let lastLineIndex = -1;
+    let lastHorizontalTime = -1;
 
     const updateHighlights = () => {
       if (!currentFile) {
@@ -1316,7 +1473,11 @@ export function SheetMusic({
 
       // Find and highlight active notes
       for (const pos of notePositions) {
-        if (!useMidiStore.getState().playback.waitMode && currentTime >= pos.startTime && currentTime < pos.endTime) {
+        if (
+          !useMidiStore.getState().playback.waitMode &&
+          currentTime >= pos.startTime &&
+          currentTime < pos.endTime
+        ) {
           const highlight = document.createElement('div');
           highlight.className = styles.noteHighlight;
           highlight.style.left = `${pos.x - 4}px`;
@@ -1329,7 +1490,12 @@ export function SheetMusic({
 
       // Update progress line position
       const progressLine = progressLineRef.current;
-      if (progressLine) {
+      if (
+        progressLine &&
+        !useMidiStore.getState().settings.showPlaybackCursor
+      ) {
+        progressLine.style.display = 'none';
+      } else if (progressLine) {
         const svgContainer = svgContainerRef.current;
         if (svgContainer) {
           const secondsPerMeasure = parseFloat(
@@ -1340,16 +1506,19 @@ export function SheetMusic({
           if (secondsPerMeasure > 0 && measurePositions.length > 0) {
             // Find current measure index
             const currentMeasure = Math.floor(currentTime / secondsPerMeasure);
-            const fractionInMeasure =
-              (currentTime % secondsPerMeasure) / secondsPerMeasure;
-
             // Find the measure position
             const measurePos = measurePositions.find(
               (m) => m.measureIndex === currentMeasure,
             );
             if (measurePos) {
-              // Calculate x position within the measure
-              const xPos = measurePos.x + fractionInMeasure * measurePos.width;
+              // Notes and cursor share one linear time axis, excluding headers.
+              const xPos = getScoreTimeX(
+                currentTime,
+                currentMeasure * secondsPerMeasure,
+                secondsPerMeasure,
+                measurePos.noteStartX,
+                measurePos.noteEndX,
+              );
               progressLine.style.left = `${xPos}px`;
               progressLine.style.top = `${measurePos.y}px`;
               progressLine.style.height = `${measurePos.height}px`;
@@ -1370,7 +1539,6 @@ export function SheetMusic({
           const systemHeight = parseFloat(
             svgContainer.dataset.systemHeight || '0',
           );
-          const topMargin = parseFloat(svgContainer.dataset.topMargin || '0');
           const secondsPerMeasure = parseFloat(
             svgContainer.dataset.secondsPerMeasure || '0',
           );
@@ -1378,6 +1546,35 @@ export function SheetMusic({
           if (systemHeight > 0 && secondsPerMeasure > 0) {
             // Calculate current measure from time
             const currentMeasure = Math.floor(currentTime / secondsPerMeasure);
+            const measure = measurePositionsRef.current.find(
+              (position) => position.measureIndex === currentMeasure,
+            );
+            if (
+              measure &&
+              currentTime !== lastHorizontalTime &&
+              container.scrollWidth > container.clientWidth
+            ) {
+              lastHorizontalTime = currentTime;
+              const cursorX = getScoreTimeX(
+                currentTime,
+                currentMeasure * secondsPerMeasure,
+                secondsPerMeasure,
+                measure.noteStartX,
+                measure.noteEndX,
+              );
+              if (
+                cursorX < container.scrollLeft + 24 ||
+                cursorX > container.scrollLeft + container.clientWidth - 32
+              ) {
+                container.scrollLeft = Math.max(
+                  0,
+                  Math.min(
+                    cursorX - container.clientWidth * 0.35,
+                    container.scrollWidth - container.clientWidth,
+                  ),
+                );
+              }
+            }
 
             // Find which line contains this measure
             const lines = linesRef.current;
@@ -1400,11 +1597,22 @@ export function SheetMusic({
             // Only scroll when we move to a different line
             if (lineIndex !== lastLineIndex) {
               lastLineIndex = lineIndex;
-              const scrollTarget = topMargin + lineIndex * systemHeight;
-              container.scrollTo({
-                top: Math.max(0, scrollTarget),
-                behavior: 'smooth',
-              });
+              // Keep the top margin visible so clefs and ledger lines fit too.
+              const scrollTarget = Math.max(
+                0,
+                Math.min(
+                  lineIndex * systemHeight,
+                  container.scrollHeight - container.clientHeight,
+                ),
+              );
+              if (Math.abs(container.scrollTop - scrollTarget) >= 1) {
+                container.scrollTo({
+                  top: scrollTarget,
+                  behavior: useMidiStore.getState().playback.isPlaying
+                    ? 'smooth'
+                    : 'auto',
+                });
+              }
             }
           }
         }
@@ -1418,7 +1626,7 @@ export function SheetMusic({
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [currentFile, getPlaybackTime, renderedHeight]);
+  }, [currentFile, getPlaybackTime, renderedLayout]);
 
   // Calculate loop overlay positions
   const loopOverlays = useMemo(() => {
@@ -1427,7 +1635,7 @@ export function SheetMusic({
 
     const overlays: { x: number; y: number; width: number; height: number }[] =
       [];
-    const measurePositions = measurePositionsRef.current;
+    const measurePositions = renderedLayout.measures;
 
     for (const pos of measurePositions) {
       if (
@@ -1443,40 +1651,44 @@ export function SheetMusic({
       }
     }
     return overlays;
-  }, [loopEnabled, loopStartMeasure, loopEndMeasure, renderedHeight]);
+  }, [loopEnabled, loopStartMeasure, loopEndMeasure, renderedLayout]);
 
-  // Calculate scroll snap points for each line
-  const snapPoints = useMemo(() => {
-    const svgContainer = svgContainerRef.current;
-    if (!svgContainer || renderedHeight === 0) return [];
-
-    const systemHeight = parseFloat(svgContainer.dataset.systemHeight || '0');
-    const topMargin = parseFloat(svgContainer.dataset.topMargin || '0');
-    const lineCount = parseInt(svgContainer.dataset.lineCount || '0', 10);
-
-    if (systemHeight === 0 || lineCount === 0) return [];
-
-    const points: number[] = [];
-    for (let i = 0; i < lineCount; i++) {
-      points.push(topMargin + i * systemHeight);
-    }
-    return points;
-  }, [renderedHeight]);
+  const handleScoreClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target =
+        event.target instanceof Element
+          ? event.target.closest<SVGElement>('[data-playback-time]')
+          : null;
+      if (!target || !svgContainerRef.current?.contains(target)) return;
+      const time = Number(target.dataset.playbackTime);
+      if (!Number.isFinite(time)) return;
+      isUserScrolling.current = false;
+      clearTimeout(scrollTimeout.current);
+      useMidiStore.getState().seek(time);
+    },
+    [],
+  );
 
   return (
     <div
       ref={containerRef}
       data-follow-view="simplified"
       className={styles.container}
+      onClick={handleScoreClick}
       style={
         isPlaying ? { overflow: 'hidden', scrollSnapType: 'none' } : undefined
       }
     >
       <div ref={svgContainerRef} className={styles.svgContainer}>
         <div ref={highlightsRef} className={styles.highlights} />
-        <div ref={progressLineRef} className={styles.progressLine} />
+        <div
+          ref={progressLineRef}
+          className={styles.progressLine}
+          data-playback-cursor
+          aria-hidden="true"
+        />
         {/* Scroll snap points for each line */}
-        {snapPoints.map((y, i) => (
+        {renderedLayout.snapPoints.map((y, i) => (
           <div
             key={`snap-${i}`}
             className={styles.snapPoint}

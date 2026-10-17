@@ -1,4 +1,5 @@
 import { parseMidiFile } from '../midi/parser';
+import { getScorePageWidth } from '../scoreLayout';
 import type { MidiFile, ScoreDensity } from '../../types/midi';
 import { attachMusicXmlVelocityReferences } from './velocity';
 
@@ -151,7 +152,7 @@ export async function renderMusicXmlPages(
   expandRepeats: boolean,
   onProgress?: (stage: MusicXmlRenderStage, progress: number) => void,
 ): Promise<MusicXmlRenderResult> {
-  const cacheKey = `${Math.round(pageWidth / 24) * 24}:${density}:${expandRepeats}`;
+  const cacheKey = `${pageWidth}:${density}:${expandRepeats}`;
   const cached = renderCache.get(source)?.get(cacheKey);
   if (cached) {
     onProgress?.('renderingPages', 1);
@@ -170,7 +171,6 @@ export async function renderMusicXmlPages(
       relaxed: {
         lyricWordSpace: 2.2,
         measureMinWidth: 21,
-        pageWidthFactor: 1.9,
         spacingLinear: 0.4,
         spacingNonLinear: 0.68,
         spacingSystem: 7,
@@ -178,7 +178,6 @@ export async function renderMusicXmlPages(
       standard: {
         lyricWordSpace: 2.0,
         measureMinWidth: 20,
-        pageWidthFactor: 2.1,
         spacingLinear: 0.36,
         spacingNonLinear: 0.65,
         spacingSystem: 6,
@@ -186,7 +185,6 @@ export async function renderMusicXmlPages(
       compact: {
         lyricWordSpace: 1.5,
         measureMinWidth: 16,
-        pageWidthFactor: 2.5,
         spacingLinear: 0.28,
         spacingNonLinear: 0.6,
         spacingSystem: 5,
@@ -205,10 +203,7 @@ export async function renderMusicXmlPages(
       lyricTopMinMargin: 2.25,
       lyricWordSpace: densityOptions.lyricWordSpace,
       measureMinWidth: densityOptions.measureMinWidth,
-      pageWidth: Math.max(
-        750,
-        Math.round(pageWidth * densityOptions.pageWidthFactor),
-      ),
+      pageWidth: getScorePageWidth(pageWidth, density ?? 'standard'),
       scale: 40,
       spacingLinear: densityOptions.spacingLinear,
       spacingNonLinear: densityOptions.spacingNonLinear,

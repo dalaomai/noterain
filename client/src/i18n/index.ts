@@ -46,6 +46,7 @@ export const en = {
   scoreDensityRelaxed: 'Relaxed',
   scoreDensityStandard: 'Standard',
   scoreDensityCompact: 'Compact',
+  showPlaybackCursor: 'Show playback cursor',
   expandRepeats: 'Expand repeats',
 
   // Settings
@@ -227,6 +228,7 @@ export const zh: Record<TranslationKeys, string> = {
   scoreDensityRelaxed: '宽松',
   scoreDensityStandard: '标准',
   scoreDensityCompact: '紧凑',
+  showPlaybackCursor: '显示播放游标',
   expandRepeats: '展开反复',
 
   // Settings

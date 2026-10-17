@@ -110,11 +110,28 @@ beforeEach(() => {
   );
 });
 
-test('old persisted settings receive all three enabled defaults', () => {
+test('old persisted settings receive feedback and playback cursor defaults', () => {
   assert.equal(initial.settings.volume, 0.5);
+  assert.equal(initial.settings.showPlaybackCursor, true);
   assert.equal(initial.settings.followPitchFeedback, true);
   assert.equal(initial.settings.followTimingFeedback, true);
   assert.equal(initial.settings.followVelocityFeedback, true);
+});
+
+test('cursor preference is persisted and survives score mode changes and practice actions', () => {
+  state().updateSettings({ showPlaybackCursor: false });
+  load();
+  state().updateSettings({ showOriginalMusicXml: false });
+  state().seek(1);
+  state().pause();
+  assert.equal(state().settings.showPlaybackCursor, false);
+  assert.equal(
+    JSON.parse(localStorage.getItem('piano-storage')).state.settings
+      .showPlaybackCursor,
+    false,
+  );
+  state().updateSettings({ showOriginalMusicXml: true });
+  assert.equal(state().settings.showPlaybackCursor, false);
 });
 test('timing uses real milliseconds, speed and exact boundaries', () => {
   const clock = { scoreTime: 0, timestamp: 1000, speed: 2 };
@@ -126,13 +143,7 @@ test('timing uses real milliseconds, speed and exact boundaries', () => {
     [400, 'late'],
     [401, 'waited'],
   ]) {
-    const result = judgeFollowInput(
-      note(60, 1),
-      clock,
-      1500 + offset,
-      84,
-      64,
-    );
+    const result = judgeFollowInput(note(60, 1), clock, 1500 + offset, 84, 64);
     assert.equal(result.referenceVelocity, 64);
     assert.equal(result.offsetMs, offset);
     assert.equal(result.timing, expected);

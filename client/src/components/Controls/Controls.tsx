@@ -465,39 +465,56 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
               </div>
             )}
 
-          {currentFile?.sourceFormat === 'musicxml' &&
-            settings.showSheetMusic &&
-            settings.showOriginalMusicXml && (
-              <div className={styles.gridItem}>
-                <label className={styles.label}>{t('scoreDensity')}</label>
-                <select
-                  className={styles.select}
-                  value={settings.scoreDensity}
+          {currentFile && settings.showSheetMusic && (
+            <div className={styles.gridItem}>
+              <label className={styles.label}>{t('scoreDensity')}</label>
+              <select
+                className={styles.select}
+                value={settings.scoreDensity}
+                onChange={(event) =>
+                  updateSettings({
+                    scoreDensity: event.target.value as
+                      'relaxed' | 'standard' | 'compact',
+                  })
+                }
+              >
+                <option value="relaxed">{t('scoreDensityRelaxed')}</option>
+                <option value="standard">{t('scoreDensityStandard')}</option>
+                <option value="compact">{t('scoreDensityCompact')}</option>
+              </select>
+              {currentFile.sourceFormat === 'musicxml' &&
+                settings.showOriginalMusicXml && (
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={settings.expandMusicXmlRepeats}
+                      onChange={() =>
+                        updateSettings({
+                          expandMusicXmlRepeats: !settings.expandMusicXmlRepeats,
+                        })
+                      }
+                    />
+                    {t('expandRepeats')}
+                  </label>
+                )}
+            </div>
+          )}
+
+          {settings.showSheetMusic && (
+            <div className={styles.gridItem}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={settings.showPlaybackCursor}
                   onChange={(event) =>
-                    updateSettings({
-                      scoreDensity: event.target.value as
-                        'relaxed' | 'standard' | 'compact',
-                    })
+                    updateSettings({ showPlaybackCursor: event.target.checked })
                   }
-                >
-                  <option value="relaxed">{t('scoreDensityRelaxed')}</option>
-                  <option value="standard">{t('scoreDensityStandard')}</option>
-                  <option value="compact">{t('scoreDensityCompact')}</option>
-                </select>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={settings.expandMusicXmlRepeats}
-                    onChange={() =>
-                      updateSettings({
-                        expandMusicXmlRepeats: !settings.expandMusicXmlRepeats,
-                      })
-                    }
-                  />
-                  {t('expandRepeats')}
-                </label>
-              </div>
-            )}
+                  data-testid="show-playback-cursor"
+                />
+                {t('showPlaybackCursor')}
+              </label>
+            </div>
+          )}
 
           {/* Notes overlay toggle */}
           <div className={styles.gridItem}>

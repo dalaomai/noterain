@@ -6,6 +6,7 @@ import { MusicXmlSheet } from './components/MusicXmlSheet/MusicXmlSheet';
 import { NotesOverlay } from './components/NotesOverlay/NotesOverlay';
 import { SheetMusic } from './components/SheetMusic/SheetMusic';
 import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
+import { PwaStatus } from './components/PwaStatus/PwaStatus';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useMidiFile } from './hooks/useMidiFile';
 import { useMidiInput } from './hooks/useMidiInput';
@@ -145,6 +146,7 @@ function App() {
           minNote={minNote}
           maxNote={maxNote}
         />
+        <PwaStatus />
       </div>
     </div>
   );

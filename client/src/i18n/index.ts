@@ -107,6 +107,28 @@ export const en = {
   muteTrack: 'Mute track',
   playTrackAudio: 'Play track audio',
 
+  // PWA installation and updates
+
+  pwaStatus: 'Application and offline status',
+  pwaUpdate: 'Application update',
+  pwaUpdateReady: 'A new version is ready',
+  applyPwaUpdate: 'Update now',
+  dismissPwaUpdate: 'Remind me later',
+  pwaPauseToUpdate: 'Pause to update',
+  pwaWaitForInstall: 'Preparing offline resources',
+  pwaUpdating: 'Updating...',
+  pwaUpdateError: 'Could not update. Please try again.',
+  offlineInstall: 'Offline installation',
+  offlineInstallPreparing: 'Preparing full offline resources',
+  offlineInstallApplication: 'Checking app resources · samples {count}/{total}',
+  offlineInstallSamples: 'Piano samples {count}/{total}',
+  offlineInstallProgress: 'Offline resource download progress',
+  offlineInstallReady: 'Full offline resources are ready',
+  offlineInstallIncomplete: 'Offline installation is incomplete',
+  offlineInstallRetryDescription: 'Saved samples: {count}/{total}. Check the network and available storage, then retry.',
+  retryOfflineInstall: 'Resume download',
+  offlinePackIncomplete: 'Some samples are missing. Download again to resume.',
+
   // Offline pack
   offline: 'Offline:',
   offlineReady: 'Ready',
@@ -246,6 +268,28 @@ export const zh: Record<TranslationKeys, string> = {
   showTrackVisually: '显示音轨画面',
   muteTrack: '将音轨静音',
   playTrackAudio: '取消音轨静音',
+
+  // PWA installation and updates
+
+  pwaStatus: '应用与离线状态',
+  pwaUpdate: '应用更新',
+  pwaUpdateReady: '新版已就绪',
+  applyPwaUpdate: '立即更新',
+  dismissPwaUpdate: '稍后更新',
+  pwaPauseToUpdate: '暂停后更新',
+  pwaWaitForInstall: '正在准备离线资源',
+  pwaUpdating: '正在更新...',
+  pwaUpdateError: '更新未完成，请重试。',
+  offlineInstall: '离线安装',
+  offlineInstallPreparing: '正在准备完整离线资源',
+  offlineInstallApplication: '正在校验应用资源 · 音色 {count}/{total}',
+  offlineInstallSamples: '钢琴采样 {count}/{total}',
+  offlineInstallProgress: '离线资源下载进度',
+  offlineInstallReady: '完整离线资源已就绪',
+  offlineInstallIncomplete: '离线安装尚未完成',
+  offlineInstallRetryDescription: '已保存 {count}/{total} 个采样，请检查网络和存储空间后继续下载。',
+  retryOfflineInstall: '继续下载',
+  offlinePackIncomplete: '部分音色尚未下载，请再次下载以补齐。',
 
   // Offline pack
   offline: '离线：',

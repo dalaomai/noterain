@@ -5,9 +5,8 @@
  * for both the app and the SW runtime caching.
  */
 
-import { version } from '../../package.json';
-
-export const SAMPLES_CACHE_NAME = `piano-samples-local-v${version}`;
+import { SAMPLES_CACHE_NAME } from '../constants/offline';
+export { SAMPLES_CACHE_NAME } from '../constants/offline';
 
 /** Read the offline pack directly, even without a controlling service worker. */
 export async function loadPianoSample(
@@ -32,7 +31,8 @@ export async function loadPianoSample(
   }
   onDownload?.();
   const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+  if (!response.ok)
+    throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
 
   if (cache) {
     try {
@@ -50,9 +50,36 @@ export const VELOCITY_LAYERS = Array.from({ length: 16 }, (_, i) => i + 1);
 
 /** Sample notes available in Salamander (every minor third) */
 export const SAMPLE_NOTES = [
-  'A0', 'C1', 'Ds1', 'Fs1', 'A1', 'C2', 'Ds2', 'Fs2', 'A2', 'C3',
-  'Ds3', 'Fs3', 'A3', 'C4', 'Ds4', 'Fs4', 'A4', 'C5', 'Ds5', 'Fs5',
-  'A5', 'C6', 'Ds6', 'Fs6', 'A6', 'C7', 'Ds7', 'Fs7', 'A7', 'C8',
+  'A0',
+  'C1',
+  'Ds1',
+  'Fs1',
+  'A1',
+  'C2',
+  'Ds2',
+  'Fs2',
+  'A2',
+  'C3',
+  'Ds3',
+  'Fs3',
+  'A3',
+  'C4',
+  'Ds4',
+  'Fs4',
+  'A4',
+  'C5',
+  'Ds5',
+  'Fs5',
+  'A5',
+  'C6',
+  'Ds6',
+  'Fs6',
+  'A6',
+  'C7',
+  'Ds7',
+  'Fs7',
+  'A7',
+  'C8',
 ];
 
 /** Build the full list of sample URLs */
@@ -83,8 +110,12 @@ export async function getCachedSampleCount(): Promise<number> {
   try {
     if (!('caches' in window)) return 0;
     const cache = await caches.open(SAMPLES_CACHE_NAME);
-    const keys = await cache.keys();
-    return keys.filter((req) => req.url.includes('/samples/')).length;
+    const present = await Promise.all(
+      getAllSampleUrls().map(async (url) =>
+        (await cache.match(url))?.ok ? 1 : 0,
+      ),
+    );
+    return present.reduce<number>((count, value) => count + value, 0);
   } catch {
     return 0;
   }
@@ -121,7 +152,7 @@ export async function downloadOfflinePack(
       try {
         // Skip if already cached
         const cached = await cache.match(url);
-        if (!cached) {
+        if (!cached?.ok) {
           const response = await fetch(url, { signal });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           await cache.put(url, response);

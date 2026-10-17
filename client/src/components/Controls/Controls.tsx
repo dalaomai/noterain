@@ -31,6 +31,7 @@ import { useI18n } from '../../hooks/useI18n';
 import { useFullscreen } from '../../hooks/useFullscreen';
 import { useAutoHideToolbar } from '../../hooks/useAutoHideToolbar';
 import { useScreenWakeLock } from '../../hooks/useScreenWakeLock';
+import { usePwaStore } from '../../stores/pwaStore';
 import { LOCALE_OPTIONS } from '../../i18n';
 import {
   useMidiStore,
@@ -103,6 +104,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
   const screenWakeLock = useScreenWakeLock(keepScreenAwake);
 
   const offlinePack = useOfflinePack();
+  const pwa = usePwaStore();
 
   const { locale, t, setLocale } = useI18n();
   const fullscreen = useFullscreen();
@@ -1067,13 +1069,35 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
             <label className={styles.label}>{t('offline')}</label>
             {offlinePack.isComplete ? (
               <>
-                <span className={styles.offlineReady}>
-                  <CheckCircle2 size={14} /> {t('offlineReady')}
-                </span>
+                {pwa.installed && pwa.installPhase !== 'ready' ? (
+                  <span className={styles.muted}>
+                    {t(
+                      pwa.installPhase === 'error'
+                        ? 'offlineInstallIncomplete'
+                        : 'offlineInstallPreparing',
+                    )}
+                  </span>
+                ) : (
+                  <span className={styles.offlineReady}>
+                    <CheckCircle2 size={14} /> {t('offlineReady')}
+                  </span>
+                )}
+                {pwa.installed && pwa.installPhase === 'error' && (
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={() => {
+                      void pwa.retryInstall();
+                    }}
+                  >
+                    {t('retryOfflineInstall')}
+                  </button>
+                )}
                 <button
                   className={styles.button}
                   onClick={offlinePack.removePack}
                   title={t('removeOfflinePack')}
+                  disabled={pwa.installed}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -1094,6 +1118,7 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                   className={styles.button}
                   onClick={offlinePack.cancelDownload}
                   title={t('cancelDownload')}
+                  disabled={pwa.installed}
                 >
                   <X size={14} />
                 </button>
@@ -1102,7 +1127,11 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
               <>
                 <button
                   className={styles.button}
-                  onClick={offlinePack.startDownload}
+                  onClick={() => {
+                    void (pwa.installed
+                      ? pwa.retryInstall()
+                      : offlinePack.startDownload());
+                  }}
                   title={t('downloadAudioPack')}
                 >
                   <CloudDownload size={14} /> {t('audioPack')}
@@ -1114,6 +1143,11 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
                 )}
               </>
             )}
+            {offlinePack.error && !offlinePack.isDownloading && (
+              <span className={styles.warning}>
+                {t('offlinePackIncomplete')}
+              </span>
+            )}
           </div>
         </section>
 
@@ -1124,6 +1158,31 @@ export function Controls({ isLoadingFullVelocity }: ControlsProps) {
           <h2 id="general-settings" className={styles.groupTitle}>
             {t('generalSettings')}
           </h2>
+          {pwa.updateReady && (
+            <div className={styles.gridItem}>
+              <span className={styles.label}>{t('pwaUpdateReady')}</span>
+              <button
+                type="button"
+                className={styles.button}
+                disabled={
+                  isPlaying ||
+                  pwa.isApplying ||
+                  pwa.installPhase === 'preparing'
+                }
+                onClick={() => {
+                  void pwa.applyUpdate();
+                }}
+              >
+                {t(
+                  isPlaying
+                    ? 'pwaPauseToUpdate'
+                    : pwa.isApplying
+                      ? 'pwaUpdating'
+                      : 'applyPwaUpdate',
+                )}
+              </button>
+            </div>
+          )}
           {/* Language selector */}
           <div className={styles.gridItem}>
             <label className={styles.label}>{t('language')}</label>

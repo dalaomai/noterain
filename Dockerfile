@@ -14,7 +14,7 @@ RUN if [ -f package-lock.json ]; then \
 
 COPY . .
 
-# Build client (Vite) -> /app/dist/client
+# Build client (Vite) -> /app/client/dist
 RUN npm run build
 
 # ---- Runtime stage: nginx serving static files ----
@@ -23,7 +23,7 @@ FROM nginx:1.27-alpine AS runner
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Static site (includes samples from client/public via Vite copy)
-COPY --from=builder /app/dist/client /usr/share/nginx/html
+COPY --from=builder /app/client/dist /usr/share/nginx/html
 
 EXPOSE 80
 

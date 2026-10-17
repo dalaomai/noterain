@@ -53,7 +53,7 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    outDir: '../dist/client',
+    outDir: 'dist',
     emptyOutDir: true,
   },
 });

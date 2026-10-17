@@ -123,7 +123,7 @@ bun run build   # or: npm run build
 bun run preview # or: npm run preview
 ```
 
-The build output is a fully static site in `dist/client/` — deploy it to any static host (nginx, Cloudflare Pages, Netlify, GitHub Pages, ...).
+The build output is a fully static site in `client/dist/` — deploy it to any static host (nginx, Cloudflare Pages, Netlify, GitHub Pages, ...).
 
 ### Docker
 

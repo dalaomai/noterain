@@ -8,9 +8,12 @@ import {
 } from '../lib/musicxml/parser';
 import { removeRawMidiData } from '../utils/storage';
 import type { MidiFile } from '../types/midi';
+import type { CollectedScore } from '../features/score-link-import/core/types';
+import { buildSvgPerformanceScore } from '../features/score-link-import/core/svgPerformance';
+import { createScorePackage, parseScorePackage } from '../features/score-link-import/core/scorePackage';
 
 function isSupportedScoreFile(file: File): boolean {
-  return /\.(mid|midi)$/i.test(file.name) || isMusicXmlFileName(file.name);
+  return /\.(mid|midi|noterain)$/i.test(file.name) || isMusicXmlFileName(file.name);
 }
 
 type ScorePickerWindow = Window & {
@@ -34,9 +37,33 @@ export function useMidiFile() {
     getCurrentFile,
   } = useMidiStore();
 
+  const loadSvgMidiScore = useCallback(
+    async (score: CollectedScore, source = createScorePackage(score)): Promise<MidiFile> => {
+      const binary = atob(score.midiBase64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      const midiFile = parseMidiFile(
+        bytes.buffer,
+        `${score.title.replace(/[\\/:*?"<>|]/g, '_') || 'MuseScore'}.mid`,
+      );
+      midiFile.title = score.title;
+      midiFile.sourceFormat = 'svg-midi';
+      midiFile.svgScore = buildSvgPerformanceScore(midiFile, score.pages);
+      midiFile.historyId = await useScoreHistoryStore.getState().recordImport(source, midiFile);
+      addFile(midiFile);
+      setCurrentFile(midiFile.id);
+      return midiFile;
+    },
+    [addFile, setCurrentFile],
+  );
+
   /** Load a MIDI file from File object */
   const loadFile = useCallback(
     async (file: File): Promise<MidiFile> => {
+      if (/\.noterain$/i.test(file.name)) {
+        const score = await parseScorePackage(file);
+        const midiFile = await loadSvgMidiScore(score, file);
+        return midiFile;
+      }
       const midiFile = isMusicXmlFileName(file.name)
         ? await parseMusicXmlFile(file)
         : parseMidiFile(await file.arrayBuffer(), file.name);
@@ -45,7 +72,7 @@ export function useMidiFile() {
       setCurrentFile(midiFile.id);
       return midiFile;
     },
-    [addFile, setCurrentFile]
+    [addFile, setCurrentFile, loadSvgMidiScore]
   );
 
   /** Prefer Android's document picker over the media upload chooser. */
@@ -177,6 +204,7 @@ export function useMidiFile() {
     currentFileId,
     loadFile,
     loadFromUrl,
+    loadSvgMidiScore,
     createNew,
     deleteFile,
     updateFile,

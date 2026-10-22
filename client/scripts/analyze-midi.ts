@@ -26,13 +26,8 @@ midi.tracks.forEach((track, i) => {
   let minNote = 127;
   let maxNote = 0;
   let programNumber: number | undefined;
-  let currentTick = 0;
-  let firstNoteTick = 0;
-  let lastNoteTick = 0;
 
   for (const event of track) {
-    currentTick += event.deltaTime;
-
     if (event.type === 'trackName') {
       trackName = event.text;
     }
@@ -43,8 +38,6 @@ midi.tracks.forEach((track, i) => {
       noteCount++;
       if (event.noteNumber < minNote) minNote = event.noteNumber;
       if (event.noteNumber > maxNote) maxNote = event.noteNumber;
-      if (noteCount === 1) firstNoteTick = currentTick;
-      lastNoteTick = currentTick;
     }
   }
 

@@ -1,7 +1,10 @@
 import { parseMidiFile } from '../midi/parser';
-import { getScorePageWidth } from '../scoreLayout';
 import type { MidiFile, ScoreDensity } from '../../types/midi';
 import { attachMusicXmlVelocityReferences } from './velocity';
+import type {
+  MusicXmlWorkerRequest,
+  MusicXmlWorkerResponse,
+} from './renderWorkerTypes';
 
 interface VerovioToolkitLike {
   destroy(): void;
@@ -36,12 +39,6 @@ export type MusicXmlRenderStage =
 
 const renderCache = new WeakMap<object, Map<string, MusicXmlRenderResult>>();
 
-function yieldToBrowser(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-}
-
 type VerovioToolkitConstructor = new (module: unknown) => VerovioToolkitLike;
 
 let verovioPromise: Promise<{
@@ -60,19 +57,6 @@ async function loadVerovio() {
     }));
   }
   return verovioPromise;
-}
-
-function loadSource(
-  toolkit: VerovioToolkitLike,
-  source: Pick<MidiFile, 'musicXml' | 'musicXmlCompressed'>,
-): boolean {
-  if (source.musicXmlCompressed) {
-    return toolkit.loadZipDataBuffer(source.musicXmlCompressed);
-  }
-  if (source.musicXml) {
-    return toolkit.loadData(source.musicXml);
-  }
-  return false;
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -151,6 +135,7 @@ export async function renderMusicXmlPages(
   density: ScoreDensity,
   expandRepeats: boolean,
   onProgress?: (stage: MusicXmlRenderStage, progress: number) => void,
+  signal?: AbortSignal,
 ): Promise<MusicXmlRenderResult> {
   const cacheKey = `${pageWidth}:${density}:${expandRepeats}`;
   const cached = renderCache.get(source)?.get(cacheKey);
@@ -159,97 +144,54 @@ export async function renderMusicXmlPages(
     return cached;
   }
 
-  onProgress?.('loadingEngine', 0.1);
-  await yieldToBrowser();
-  const { module, Toolkit } = await loadVerovio();
-  onProgress?.('loadingEngine', 1);
-  await yieldToBrowser();
-  const toolkit = new Toolkit(module);
+  const worker = new Worker(new URL('./render.worker.ts', import.meta.url), {
+    type: 'module',
+  });
+  const id = crypto.randomUUID();
+  const request: MusicXmlWorkerRequest = {
+    id,
+    source: {
+      musicXml: source.musicXml,
+      musicXmlCompressed: source.musicXmlCompressed,
+    },
+    pageWidth,
+    density,
+    expandRepeats,
+  };
 
   try {
-    const densityOptions = {
-      relaxed: {
-        lyricWordSpace: 2.2,
-        measureMinWidth: 21,
-        spacingLinear: 0.4,
-        spacingNonLinear: 0.68,
-        spacingSystem: 7,
-      },
-      standard: {
-        lyricWordSpace: 2.0,
-        measureMinWidth: 20,
-        spacingLinear: 0.36,
-        spacingNonLinear: 0.65,
-        spacingSystem: 6,
-      },
-      compact: {
-        lyricWordSpace: 1.5,
-        measureMinWidth: 16,
-        spacingLinear: 0.28,
-        spacingNonLinear: 0.6,
-        spacingSystem: 5,
-      },
-    }[density ?? 'standard'];
-
-    onProgress?.('parsingScore', 0.2);
-    await yieldToBrowser();
-    toolkit.setOptions({
-      adjustPageHeight: true,
-      breaks: 'auto',
-      expandAlways: expandRepeats,
-      footer: 'none',
-      header: 'none',
-      lyricHeightFactor: 1.1,
-      lyricTopMinMargin: 2.25,
-      lyricWordSpace: densityOptions.lyricWordSpace,
-      measureMinWidth: densityOptions.measureMinWidth,
-      pageWidth: getScorePageWidth(pageWidth, density ?? 'standard'),
-      scale: 40,
-      spacingLinear: densityOptions.spacingLinear,
-      spacingNonLinear: densityOptions.spacingNonLinear,
-      spacingSystem: densityOptions.spacingSystem,
+    const workerResult = await new Promise<Extract<MusicXmlWorkerResponse, { type: 'complete' }>['result']>((resolve, reject) => {
+      const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+      signal?.addEventListener('abort', abort, { once: true });
+      worker.addEventListener('error', (event) => reject(new Error(event.message || 'MusicXML worker failed')), { once: true });
+      worker.addEventListener('message', (event: MessageEvent<MusicXmlWorkerResponse>) => {
+        const response = event.data;
+        if (response.id !== id) return;
+        if (response.type === 'progress') {
+          onProgress?.(response.stage, response.progress);
+        } else if (response.type === 'complete') {
+          signal?.removeEventListener('abort', abort);
+          resolve(response.result);
+        } else {
+          signal?.removeEventListener('abort', abort);
+          reject(new Error(response.error));
+        }
+      });
+      if (signal?.aborted) abort();
+      else worker.postMessage(request);
     });
-
-    if (!loadSource(toolkit, source)) {
-      throw new Error('Unable to render MusicXML score');
-    }
-    onProgress?.('parsingScore', 1);
-    await yieldToBrowser();
-
-    onProgress?.('layingOutScore', 0.2);
-    await yieldToBrowser();
-    toolkit.renderToMIDI();
-    const timeMap = toolkit.renderToTimemap({
-      includeMeasures: true,
-      includeRests: true,
-    });
-    const toRenderedId = (id: string) =>
-      expandRepeats ? id : toolkit.getNotatedIdForElement(id) || id;
-
-    onProgress?.('layingOutScore', 1);
-    await yieldToBrowser();
-    const mappedTimeMap = timeMap.map((event) => ({
-      ...event,
-      measureOn: event.measureOn ? toRenderedId(event.measureOn) : undefined,
-      off: event.off?.map(toRenderedId),
-      on: event.on?.map(toRenderedId),
-    }));
-    const elementPitches = new Map<string, number>();
+    const renderedIds = new Map(workerResult.renderedIds);
+    const toRenderedId = (id: string) => renderedIds.get(id) ?? id;
+    const elementPitches = new Map(workerResult.elementPitches);
     const elementStaffs = new Map<string, string>();
-    const engraving = new DOMParser().parseFromString(toolkit.getMEI(), 'application/xml');
+    const engraving = new DOMParser().parseFromString(workerResult.mei, 'application/xml');
     for (const element of engraving.querySelectorAll('note')) {
       const id = element.getAttribute('xml:id');
       const staff = element.closest('staff')?.getAttribute('n');
       if (id && staff && /^\d+$/.test(staff)) elementStaffs.set(toRenderedId(id), staff);
     }
-    for (const event of timeMap) {
-      for (const id of event.on ?? []) {
-        const pitch = toolkit.getMIDIValuesForElement(id).pitch;
-        if (typeof pitch === 'number') elementPitches.set(toRenderedId(id), pitch);
-      }
-    }
     const elementTimes = new Map<string, number>();
-    for (const event of mappedTimeMap) {
+    for (const event of workerResult.timeMap) {
       if (event.measureOn && !elementTimes.has(event.measureOn)) {
         elementTimes.set(event.measureOn, event.tstamp / 1000);
       }
@@ -258,12 +200,8 @@ export async function renderMusicXmlPages(
       }
     }
 
-    const pageCount = toolkit.getPageCount();
-    const pages: string[] = [];
-    for (let page = 0; page < pageCount; page++) {
-      const svg = toolkit
-        .renderToSVG(page + 1, false)
-        .replace(
+    const pages = workerResult.pages.map((page) =>
+      page.replace(
           /(<g\s+id="([^"]+)"\s+class="(?:note|measure)"?)/g,
           (match, opening: string, id: string) => {
             const time = elementTimes.get(id);
@@ -273,21 +211,18 @@ export async function renderMusicXmlPages(
               ? match
               : `${opening} data-playback-time="${time}"${pitch !== undefined ? ` data-midi-pitch="${pitch}"` : ''}${staff ? ` data-midi-staff="${staff}"` : ''}`;
           },
-        );
-      pages.push(svg);
-      onProgress?.('renderingPages', (page + 1) / pageCount);
-      await yieldToBrowser();
-    }
+        ),
+    );
 
     const result = {
       pages,
-      timeMap: mappedTimeMap,
+      timeMap: workerResult.timeMap,
     };
     const sourceCache = renderCache.get(source) ?? new Map();
     sourceCache.set(cacheKey, result);
     renderCache.set(source, sourceCache);
     return result;
   } finally {
-    toolkit.destroy();
+    worker.terminate();
   }
 }

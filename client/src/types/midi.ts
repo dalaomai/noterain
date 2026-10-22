@@ -47,7 +47,9 @@ export interface MidiFile {
   /** Import-history entry associated with the source file */
   historyId?: string;
   /** Original source format */
-  sourceFormat?: 'midi' | 'musicxml';
+  sourceFormat?: 'midi' | 'musicxml' | 'svg-midi';
+  /** High-fidelity source engraving and MIDI-to-page geometry for performance view. */
+  svgScore?: SvgPerformanceScore;
   /** Original MusicXML text, when imported from an uncompressed score */
   musicXml?: string;
   /** Original compressed MusicXML data, when imported from an .mxl score */
@@ -70,12 +72,47 @@ export interface MidiFile {
   lastModified: number;
 }
 
+export interface SvgPlaybackAnchor {
+  time: number;
+  x: number;
+  points: Array<{ x: number; y: number; staff: number; pitch?: number }>;
+  pitches: number[];
+}
+
+export interface SvgPlaybackMeasure {
+  startTime: number;
+  endTime: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+export interface SvgPlaybackSystem {
+  page: number;
+  top: number;
+  bottom: number;
+  staves: Array<{ top: number; bottom: number }>;
+  left: number;
+  right: number;
+  startTime: number;
+  endTime: number;
+  measures: SvgPlaybackMeasure[];
+  anchors: SvgPlaybackAnchor[];
+}
+
+export interface SvgPerformanceScore {
+  pages: string[];
+  pageSizes: Array<{ width: number; height: number }>;
+  systems: SvgPlaybackSystem[];
+}
+
 /** A locally saved score that can be imported again without a file picker. */
 export interface ScoreHistoryEntry {
   id: string;
   fileName: string;
   title?: string;
-  sourceFormat: 'midi' | 'musicxml';
+  sourceFormat: 'midi' | 'musicxml' | 'svg-midi';
   size: number;
   duration: number;
   lastImportedAt: number;

@@ -1,0 +1,39 @@
+.dialog { width:min(720px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);margin:auto;padding:0;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-surface);color:var(--text-primary);box-shadow:0 16px 64px rgb(0 0 0 / 35%);overflow:hidden; }
+.dialog::backdrop { background:rgb(0 0 0 / 55%); }
+.content { display:flex;flex-direction:column;gap:14px;max-height:calc(100dvh - 24px);padding:16px;overflow-y:auto;box-sizing:border-box; }
+.header { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.header h2 { display:flex;align-items:center;gap:8px;margin:0;font-size:17px; }
+.description { margin:0;color:var(--text-secondary);font-size:13px;line-height:1.5; }
+.companionStatus { display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;margin:0;padding:9px 10px;border-left:3px solid var(--warning);background:var(--bg-elevated);color:var(--text-secondary);font-size:13px; }
+.companionStatus[data-status="ready"] { border-left-color:var(--success,#22c55e); }
+.companionStatus[data-status="ready"] > svg { color:var(--success,#22c55e); }
+.companionStatus[data-status="outdated"] > svg,.companionStatus[data-status="missing"] > svg { color:var(--warning); }
+.versionRefresh { display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--text-secondary);cursor:pointer; }
+.versionRefresh:hover:not(:disabled) { background:var(--bg-overlay);color:var(--text-primary); }
+.versionRefresh:disabled { opacity:.5;cursor:not-allowed; }
+.installGuide { display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-base); }
+.installGuide h3,.installGuide p,.installGuide ol { margin:0; }
+.installGuide h3 { font-size:15px; }
+.installGuide p,.installGuide li { color:var(--text-secondary);font-size:13px;line-height:1.5; }
+.installGuide ol { padding-left:20px; }
+.installActions { display:flex;flex-wrap:wrap;gap:8px; }
+.primaryLink,.secondaryLink { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:0 12px;border-radius:5px;font-size:13px;font-weight:600;text-decoration:none; }
+.primaryLink { background:var(--accent);color:var(--bg-base); }
+.secondaryLink { background:var(--bg-elevated);color:var(--text-primary); }
+.field { display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600; }
+.field input { min-width:0;height:40px;padding:0 10px;border:1px solid var(--border-color);border-radius:5px;background:var(--bg-base);color:var(--text-primary);font:inherit;font-weight:400; }
+.field input:focus-visible { outline:2px solid var(--accent);outline-offset:1px; }
+.iconButton { display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--text-secondary);cursor:pointer; }
+.iconButton:hover { background:var(--bg-elevated);color:var(--text-primary); }
+.error { margin:0;padding:9px 10px;border-left:3px solid var(--warning);background:var(--bg-elevated);color:var(--warning);font-size:13px; }
+.actions { display:flex;justify-content:flex-end;gap:8px; }
+.primaryButton,.secondaryButton { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 14px;border:0;border-radius:5px;font:inherit;font-size:13px;cursor:pointer; }
+.primaryButton { background:var(--accent);color:var(--bg-base); }
+.secondaryButton { background:var(--bg-elevated);color:var(--text-primary); }
+.primaryButton:disabled,.secondaryButton:disabled,.iconButton:disabled { opacity:.55;cursor:not-allowed; }
+.spinner { animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (max-width: 560px) {
+	.installActions { flex-direction:column; }
+	.primaryLink,.secondaryLink,.installActions .secondaryButton { width:100%;box-sizing:border-box; }
+}

@@ -166,6 +166,17 @@ export const usePwaStore = create<PwaState>((set, get) => ({
 export function initializePwa() {
   if (initialized) return;
   initialized = true;
+  if (import.meta.env.DEV) {
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.getRegistrations().then((registrations) =>
+        Promise.all(registrations.map((entry) => entry.unregister())),
+      );
+    }
+    if ('caches' in window) {
+      void caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name))));
+    }
+    return;
+  }
   let checking = false;
   let lastCheck = 0;
   let retryTimer: number | undefined;

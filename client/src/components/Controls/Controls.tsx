@@ -19,8 +19,10 @@ import {
   Minimize,
   ChevronDown,
   Clock3,
+  Link,
 } from 'lucide-react';
 import { ScoreHistory } from '../ScoreHistory/ScoreHistory';
+import { ScoreLinkImport } from '../../features/score-link-import/ScoreLinkImport';
 import { FloatingPlaybackRemote } from '../FloatingPlaybackRemote/FloatingPlaybackRemote';
 import { ScoreSelector } from './ScoreSelector';
 import { usePlayback } from '../../hooks/usePlayback';
@@ -51,6 +53,8 @@ const FEEDBACK_OPTIONS = ['followPitchFeedback', 'followTimingFeedback', 'follow
 
 export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, onRetryAudio }: ControlsProps) {
   const headerRef = useRef<HTMLDivElement>(null);
+  const importMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const autoCloseTimerRef = useRef<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(
     () =>
@@ -59,7 +63,9 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
       ).matches,
   );
   const [tracksDropdownOpen, setTracksDropdownOpen] = useState(false);
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isLinkImportOpen, setIsLinkImportOpen] = useState(false);
 
   const {
     isPlaying,
@@ -85,6 +91,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
     currentFile,
     currentFileId,
     setCurrentFile,
+    loadSvgMidiScore,
     handleFilePicker,
     handleFileInput,
   } = useMidiFile();
@@ -115,7 +122,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
   const fullscreen = useFullscreen();
   const toolbar = useAutoHideToolbar(
     fullscreen.isFullscreen,
-    isExpanded || isHistoryOpen,
+    isExpanded || isHistoryOpen || isLinkImportOpen,
   );
 
   // Auto-collapse when playback starts
@@ -169,6 +176,23 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
   useEffect(() => cancelAutoClose, []);
 
   useEffect(() => {
+    if (!isImportMenuOpen) return;
+    const closeMenu = (event: PointerEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key === 'Escape') setIsImportMenuOpen(false);
+        return;
+      }
+      if (!importMenuRef.current?.contains(event.target as Node)) setIsImportMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeMenu);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeMenu);
+    };
+  }, [isImportMenuOpen]);
+
+  useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
     const updateHeight = () => {
@@ -215,27 +239,68 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
           />
           {/* File controls */}
           <div className={styles.section}>
-            <label
-              className={`${styles.button} ${styles.fileButton}`}
-              htmlFor="score-file-input"
-            >
-              {t('openMidi')}
-              {/* Keep the native input under the user's tap on mobile. */}
+            <div ref={importMenuRef} className={styles.importMenu}>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.importButton} ${isImportMenuOpen ? styles.active : ''}`}
+                aria-haspopup="menu"
+                aria-expanded={isImportMenuOpen}
+                onClick={() => setIsImportMenuOpen((open) => !open)}
+              >
+                <CloudDownload size={16} />
+                <span>{t('openMidi')}</span>
+                <ChevronDown size={14} />
+              </button>
+              {isImportMenuOpen && (
+                <div className={styles.importDropdown} role="menu">
+                  <button
+                    type="button"
+                    className={styles.importOption}
+                    role="menuitem"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <CloudDownload size={17} />
+                    <span>
+                      <strong>{t('importLocalScore')}</strong>
+                      <small>{t('importLocalScoreDescription')}</small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.importOption}
+                    role="menuitem"
+                    onClick={() => {
+                      setIsImportMenuOpen(false);
+                      setIsExpanded(false);
+                      setIsLinkImportOpen(true);
+                    }}
+                  >
+                    <Link size={17} />
+                    <span>
+                      <strong>{t('importScoreLink')}</strong>
+                      <small>{t('importScoreLinkDescription')}</small>
+                    </span>
+                  </button>
+                </div>
+              )}
               <input
+                ref={fileInputRef}
                 id="score-file-input"
                 className={styles.fileInput}
                 type="file"
-                // Android treats audio MIME types as requests for a recorder.
-                // A generic document type also keeps XML/MXL files selectable.
+                tabIndex={-1}
                 accept={
                   /Android/i.test(navigator.userAgent)
                     ? 'application/octet-stream'
-                    : '.mid,.midi,.musicxml,.xml,.mxl'
+                    : '.mid,.midi,.musicxml,.xml,.mxl,.noterain'
                 }
                 onClick={handleFilePicker}
-                onChange={handleFileInput}
+                onChange={(event) => {
+                  setIsImportMenuOpen(false);
+                  void handleFileInput(event);
+                }}
               />
-            </label>
+            </div>
 
             <button
               type="button"
@@ -429,7 +494,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
             </button>
           </div>
           {/* Render mode toggle */}
-          <div className={styles.gridItem}>
+          {currentFile?.sourceFormat !== 'svg-midi' && <div className={styles.gridItem}>
             <button
               className={`${styles.button} ${styles.viewButton} ${!settings.showSheetMusic ? styles.active : ''}`}
               onClick={() => updateSettings({ showSheetMusic: false, showFallingNotes: true })}
@@ -442,7 +507,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
             >
               {t('sheetMusic')}
             </button>
-          </div>
+          </div>}
 
           {currentFile?.sourceFormat === 'musicxml' &&
             settings.showSheetMusic && (
@@ -465,7 +530,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
               </div>
             )}
 
-          {currentFile && settings.showSheetMusic && (
+          {currentFile && currentFile.sourceFormat !== 'svg-midi' && settings.showSheetMusic && (
             <div className={styles.gridItem}>
               <label className={styles.label}>{t('scoreDensity')}</label>
               <select
@@ -500,7 +565,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
             </div>
           )}
 
-          {settings.showSheetMusic && (
+          {(settings.showSheetMusic || currentFile?.sourceFormat === 'svg-midi') && (
             <div className={styles.gridItem}>
               <label className={styles.checkboxLabel}>
                 <input
@@ -1248,6 +1313,13 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
       <ScoreHistory
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
+      />
+      <ScoreLinkImport
+        isOpen={isLinkImportOpen}
+        onClose={() => setIsLinkImportOpen(false)}
+        onImported={async (score) => {
+          await loadSvgMidiScore(score);
+        }}
       />
       {currentFile && (settings.showFloatingRemote ?? true) && (
         <FloatingPlaybackRemote

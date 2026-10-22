@@ -12,6 +12,8 @@ declare module 'verovio/esm' {
   export class VerovioToolkit {
     constructor(module: unknown);
     destroy(): void;
+    getMEI(): string;
+    getMIDIValuesForElement(xmlId: string): { pitch?: number };
     getPageCount(): number;
     getNotatedIdForElement(xmlId: string): string;
     loadData(data: string): boolean;

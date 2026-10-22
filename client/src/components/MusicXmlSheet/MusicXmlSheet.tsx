@@ -165,41 +165,64 @@ export function MusicXmlSheet() {
 
     let cancelled = false;
     let timeout: number | undefined;
+    let rendering = false;
+    let renderQueued = false;
+    let requestedWidth = 0;
+    let renderController: AbortController | null = null;
 
-    const render = () => {
+    const render = async (pageWidth: number) => {
+      if (rendering) {
+        renderQueued = requestedWidth !== pageWidth;
+        requestedWidth = pageWidth;
+        return;
+      }
+      rendering = true;
+      requestedWidth = pageWidth;
+      renderController = new AbortController();
       setError(null);
       setPages([]);
       setRenderProgress({ stage: 'loadingEngine', progress: 0 });
-      void renderMusicXmlPages(
-        currentFile,
-        Math.max(320, container.clientWidth - 32),
-        scoreDensity,
-        expandRepeats,
-        (stage, progress) => {
-          if (!cancelled) setRenderProgress({ stage, progress });
-        },
-      )
-        .then((result) => {
-          if (!cancelled) {
-            setPages(result.pages);
-            setTimeMap(result.timeMap);
-          }
-        })
-        .catch((renderError: unknown) => {
-          console.error('[MusicXML] Failed to render score:', renderError);
-          if (!cancelled) setError(t('musicXmlRenderError'));
-        });
+      try {
+        const result = await renderMusicXmlPages(
+          currentFile,
+          pageWidth,
+          scoreDensity,
+          expandRepeats,
+          (stage, progress) => {
+            if (!cancelled) setRenderProgress({ stage, progress });
+          },
+          renderController.signal,
+        );
+        if (!cancelled) {
+          setPages(result.pages);
+          setTimeMap(result.timeMap);
+        }
+      } catch (renderError: unknown) {
+        if (renderError instanceof DOMException && renderError.name === 'AbortError') return;
+        console.error('[MusicXML] Failed to render score:', renderError);
+        if (!cancelled) setError(t('musicXmlRenderError'));
+      } finally {
+        renderController = null;
+        rendering = false;
+        if (!cancelled && renderQueued) {
+          renderQueued = false;
+          void render(requestedWidth);
+        }
+      }
     };
 
     const observer = new ResizeObserver(() => {
+      const pageWidth = Math.max(320, Math.round(container.clientWidth - 32));
+      if (pageWidth === requestedWidth) return;
       window.clearTimeout(timeout);
-      timeout = window.setTimeout(render, 150);
+      timeout = window.setTimeout(() => void render(pageWidth), 150);
     });
     observer.observe(container);
-    render();
+    void render(Math.max(320, Math.round(container.clientWidth - 32)));
 
     return () => {
       cancelled = true;
+      renderController?.abort();
       window.clearTimeout(timeout);
       observer.disconnect();
     };

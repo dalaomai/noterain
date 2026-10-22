@@ -127,7 +127,7 @@ export function ScoreHistory({ isOpen, onClose }: ScoreHistoryProps) {
                     <span className={styles.fileName}>{entry.fileName}</span>
                   )}
                   <span className={styles.details}>
-                    {entry.sourceFormat === 'musicxml' ? 'MusicXML' : 'MIDI'}
+                    {entry.sourceFormat === 'musicxml' ? 'MusicXML' : entry.sourceFormat === 'svg-midi' ? 'SVG + MIDI' : 'MIDI'}
                     {' · '}
                     {new Date(entry.lastImportedAt).toLocaleString(
                       locale === 'zh' ? 'zh-CN' : 'en',

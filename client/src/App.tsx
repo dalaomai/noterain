@@ -6,6 +6,7 @@ import { LoadingScreen } from './components/LoadingScreen/LoadingScreen';
 import { MusicXmlSheet } from './components/MusicXmlSheet/MusicXmlSheet';
 import { NotesOverlay } from './components/NotesOverlay/NotesOverlay';
 import { SheetMusic } from './components/SheetMusic/SheetMusic';
+import { SvgPerformanceSheet } from './components/SvgPerformanceSheet/SvgPerformanceSheet';
 import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
 import { PwaStatus } from './components/PwaStatus/PwaStatus';
 import { useAudioEngine } from './hooks/useAudioEngine';
@@ -119,20 +120,24 @@ function App() {
       <div className={`main-content${settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
         {settings.showNotesOverlay && <NotesOverlay />}
 
+        {currentFile?.sourceFormat === 'svg-midi' && (
+          <SvgPerformanceSheet key={currentFile.id} />
+        )}
+
         {currentFile?.sourceFormat === 'musicxml' &&
           settings.showSheetMusic &&
           settings.showOriginalMusicXml && (
           <MusicXmlSheet key={currentFile.id} />
         )}
 
-        {currentFile &&
+        {currentFile && currentFile.sourceFormat !== 'svg-midi' &&
           settings.showSheetMusic &&
           (currentFile.sourceFormat !== 'musicxml' ||
             !settings.showOriginalMusicXml) && (
           <SheetMusic key={currentFile.id} />
         )}
 
-        {currentFile && settings.showFallingNotes && !settings.showSheetMusic && (
+        {currentFile && currentFile.sourceFormat !== 'svg-midi' && settings.showFallingNotes && !settings.showSheetMusic && (
           <FallingNotes key={currentFile.id} lookahead={3} minNote={minNote} maxNote={maxNote} />
         )}
 

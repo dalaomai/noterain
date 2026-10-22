@@ -99,7 +99,7 @@ function extractTimeSignature(midi: MidiData): TimeSignature {
       if (event.type === 'timeSignature') {
         return {
           numerator: event.numerator,
-          denominator: Math.pow(2, event.denominator),
+          denominator: event.denominator,
         };
       }
     }

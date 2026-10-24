@@ -182,6 +182,7 @@ export function ScoreLinkImport({ isOpen, onClose, onImported }: ScoreLinkImport
                 <ExternalLink size={16} /> {t('installScoreLinkCompanion')}
               </a>
             </div>
+            <p className={styles.installNote}>{t('scoreLinkInstallRedirectNote')}</p>
           </section>
         )}
         <label className={styles.field}>

@@ -15,6 +15,7 @@
 .installGuide h3,.installGuide p,.installGuide ol { margin:0; }
 .installGuide h3 { font-size:15px; }
 .installGuide p,.installGuide li { color:var(--text-secondary);font-size:13px;line-height:1.5; }
+.installGuide .installNote { color:var(--text-muted);font-size:12px; }
 .installGuide ol { padding-left:20px; }
 .installActions { display:flex;flex-wrap:wrap;gap:8px; }
 .primaryLink,.secondaryLink { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:0 12px;border-radius:5px;font-size:13px;font-weight:600;text-decoration:none; }

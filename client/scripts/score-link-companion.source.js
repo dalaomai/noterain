@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NoteRain Score Link Companion v2
 // @namespace    https://github.com/noterain/score-link-companion-v2
-// @version      0.5.6
+// @version      0.5.7
 // @description  Transfers authorized score resources between MuseScore and NoteRain through Tampermonkey storage.
 // @match        https://noterain.app/*
 // @match        https://*.noterain.app/*
@@ -24,9 +24,9 @@
 // @run-at       document-start
 // ==/UserScript==
 
-(() => {
+(async () => {
   'use strict';
-  const COMPANION_VERSION = '0.5.6';
+  const COMPANION_VERSION = '0.5.7';
   const REQUEST_KEY = 'noterain-active-import';
 
   const log = (stage, details = {}) => {
@@ -65,7 +65,7 @@
       });
     };
     markInstalled();
-    pageWindow.addEventListener('message', (event) => {
+    pageWindow.addEventListener('message', async (event) => {
       const request = event.data;
       if (
         request?.type === 'noterain-companion-version-request'
@@ -106,10 +106,15 @@
         }
       });
       listeners.set(request.nonce, listener);
-      GM_setValue(REQUEST_KEY, {
+      const storedRequest = {
         nonce: request.nonce,
         url: sourceUrl.toString(),
         createdAt: Date.now(),
+      };
+      await Promise.resolve(GM_setValue(REQUEST_KEY, storedRequest));
+      log('bridge-request-stored', {
+        nonce: storedRequest.nonce,
+        url: storedRequest.url,
       });
       pageWindow.postMessage({
         type: 'noterain-score-bridge-response',
@@ -121,27 +126,36 @@
     return;
   }
 
-  const request = GM_getValue(REQUEST_KEY);
-  if (!request?.nonce || !request?.url || Date.now() - request.createdAt > 5 * 60 * 1000) return;
+  const request = await Promise.resolve(GM_getValue(REQUEST_KEY));
+  log('request-loaded', {
+    found: Boolean(request),
+    nonce: request?.nonce || null,
+    url: request?.url || null,
+    ageMs: request?.createdAt ? Date.now() - request.createdAt : null,
+  });
+  if (!request?.nonce || !request?.url || Date.now() - request.createdAt > 5 * 60 * 1000) {
+    log('request-missing-or-expired');
+    return;
+  }
   const targetUrl = new URL(request.url);
   if (location.pathname !== targetUrl.pathname) {
     location.replace(targetUrl);
     return;
   }
-  GM_deleteValue(REQUEST_KEY);
+  await Promise.resolve(GM_deleteValue(REQUEST_KEY));
   const importNonce = request.nonce;
   const responseKey = `noterain-import-response:${importNonce}`;
   const sessionId = importNonce;
   log('session-start', { sessionId, url: `${location.origin}${location.pathname}` });
   history.replaceState(null, '', location.pathname + location.search);
-  const sendResponse = (status, payload = {}) => GM_setValue(responseKey, {
+  const sendResponse = (status, payload = {}) => Promise.resolve(GM_setValue(responseKey, {
     nonce: importNonce,
     status,
     version: COMPANION_VERSION,
     sequence: `${Date.now()}:${Math.random()}`,
     ...payload,
-  });
-  sendResponse('started');
+  }));
+  await sendResponse('started');
 
   const stageLabels = {
     'waiting-for-score': '正在等待乐谱加载',
@@ -391,7 +405,7 @@
     }
 
     await progress('uploading-result', { pageCount: pages.length });
-    sendResponse('complete', { result: {
+    await sendResponse('complete', { result: {
       source: { provider: 'musescore', url: location.href, scoreId: score.id, revisionId: score.revision_id },
       title: score.file_score_title || score.title,
       metadata: {
@@ -409,6 +423,6 @@
   run().catch(async (error) => {
     updateProgressView('failed', { error: error?.message || String(error) });
     log('failed', { sessionId, error: error?.message || String(error), stack: error?.stack });
-    try { sendResponse('failed', { error: error?.message || 'IMPORT_FAILED' }); } catch {}
+    try { await sendResponse('failed', { error: error?.message || 'IMPORT_FAILED' }); } catch {}
   });
 })();

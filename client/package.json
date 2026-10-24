@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:companion": "node scripts/build-score-link-companion.mjs",
+    "dev:companion": "npm run build:companion && node scripts/serve-score-link-companion.mjs",
     "predev": "npm run build:companion",
     "dev": "vite",
     "predev:https": "npm run build:companion",

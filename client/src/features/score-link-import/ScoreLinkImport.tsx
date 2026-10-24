@@ -11,7 +11,7 @@ interface ScoreLinkImportProps {
   onImported: (score: CollectedScore) => Promise<void>;
 }
 
-const REQUIRED_COMPANION_VERSION = '0.5.6';
+const REQUIRED_COMPANION_VERSION = '0.5.7';
 type CompanionStatus = 'checking' | 'ready' | 'outdated' | 'missing';
 
 function isVersionAtLeast(actual: string, required: string): boolean {
@@ -47,9 +47,10 @@ export function ScoreLinkImport({ isOpen, onClose, onImported }: ScoreLinkImport
   const [companionVersion, setCompanionVersion] = useState<string | null>(null);
   const { t } = useI18n();
   const isAndroid = /Android/i.test(navigator.userAgent);
+  const companionInstallOrigin = import.meta.env.VITE_COMPANION_INSTALL_ORIGIN || window.location.origin;
   const companionInstallUrl = new URL(
     `/score-link-companion.user.js?v=${REQUIRED_COMPANION_VERSION}`,
-    window.location.origin,
+    companionInstallOrigin,
   ).toString();
 
   useEffect(() => {

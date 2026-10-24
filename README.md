@@ -122,6 +122,24 @@ npm run dev:https
 
 Open the printed `https://...:5173` address and accept the development certificate warning. If MIDI permission was previously denied, reset it from Chrome's site settings before clicking "Enable MIDI" again.
 
+Tampermonkey's extension process may reject the development self-signed
+certificate even after the page certificate is accepted. In that case, serve
+only the userscript installer over HTTP in a second terminal:
+
+```bash
+npm run dev:companion -w client
+```
+
+Then start the HTTPS app with the browser-visible forwarded origin for that HTTP
+port (normally `http://localhost:5174`; VS Code remote forwarding may assign a
+different local port):
+
+```bash
+VITE_COMPANION_INSTALL_ORIGIN=http://localhost:5174 npm run dev:https -w client
+```
+
+The application remains HTTPS; only the static `.user.js` installer uses HTTP.
+
 ### Production Build
 
 ```bash

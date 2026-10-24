@@ -40,6 +40,9 @@ test('link import returns SVG and MIDI without invoking MusicXML reconstruction'
   assert.match(api, /event\.data\?\.nonce !== nonce/);
   assert.match(dialog, /await onImported\(/);
   assert.doesNotMatch(dialog, /musicXml|pendingResult|downloadDiagnosticPackage/);
+  assert.match(dialog, /new URL\(/);
+  assert.match(dialog, /window\.location\.origin/);
+  assert.match(dialog, /score-link-companion\.user\.js\?v=\$\{REQUIRED_COMPANION_VERSION\}/);
   assert.match(api, /noterain-score-bridge-request/);
   assert.match(api, /event\.data\.status === 'bridge-ready'/);
   assert.match(api, /COMPANION_NOT_DETECTED/);

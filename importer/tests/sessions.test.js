@@ -16,7 +16,10 @@ test('companion metadata and runtime probe versions stay aligned', () => {
   const metadataVersion = script.match(/@version\s+(\d+\.\d+\.\d+)/)?.[1];
   const runtimeVersion = script.match(/COMPANION_VERSION = '(\d+\.\d+\.\d+)'/)?.[1];
   assert.equal(runtimeVersion, metadataVersion);
-  assert.equal(runtimeVersion, '0.5.3');
+  assert.equal(runtimeVersion, '0.5.6');
+  assert.match(script, /@match\s+https:\/\/piano\.dalaomai\.cn\/\*/);
+  assert.match(script, /@name\s+NoteRain Score Link Companion v2/);
+  assert.match(script, /@namespace\s+https:\/\/github\.com\/noterain\/score-link-companion-v2/);
   assert.match(script, /noterain-import-progress/);
   assert.match(script, /updateProgressView\('complete'/);
   assert.match(script, /updateProgressView\('failed'/);
@@ -31,6 +34,7 @@ test('companion metadata and runtime probe versions stay aligned', () => {
   assert.deepEqual(matches, [
     'https://noterain.app/*',
     'https://*.noterain.app/*',
+    'https://piano.dalaomai.cn/*',
     'https://localhost/*',
     'http://localhost/*',
     'https://127.0.0.1/*',

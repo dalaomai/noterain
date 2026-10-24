@@ -1,10 +1,11 @@
 // ==UserScript==
-// @name         NoteRain Score Link Companion
-// @namespace    https://github.com/noterain
-// @version      0.5.3
+// @name         NoteRain Score Link Companion v2
+// @namespace    https://github.com/noterain/score-link-companion-v2
+// @version      0.5.6
 // @description  Transfers authorized score resources between MuseScore and NoteRain through Tampermonkey storage.
 // @match        https://noterain.app/*
 // @match        https://*.noterain.app/*
+// @match        https://piano.dalaomai.cn/*
 // @match        https://localhost/*
 // @match        http://localhost/*
 // @match        https://127.0.0.1/*
@@ -80,7 +81,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
 };
 (function () {
     'use strict';
-    var COMPANION_VERSION = '0.5.3';
+    var COMPANION_VERSION = '0.5.6';
     var REQUEST_KEY = 'noterain-active-import';
     var log = function (stage, details) {
         if (details === void 0) { details = {}; }

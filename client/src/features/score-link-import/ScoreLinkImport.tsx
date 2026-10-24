@@ -11,7 +11,7 @@ interface ScoreLinkImportProps {
   onImported: (score: CollectedScore) => Promise<void>;
 }
 
-const REQUIRED_COMPANION_VERSION = '0.5.3';
+const REQUIRED_COMPANION_VERSION = '0.5.6';
 type CompanionStatus = 'checking' | 'ready' | 'outdated' | 'missing';
 
 function isVersionAtLeast(actual: string, required: string): boolean {
@@ -47,6 +47,10 @@ export function ScoreLinkImport({ isOpen, onClose, onImported }: ScoreLinkImport
   const [companionVersion, setCompanionVersion] = useState<string | null>(null);
   const { t } = useI18n();
   const isAndroid = /Android/i.test(navigator.userAgent);
+  const companionInstallUrl = new URL(
+    `/score-link-companion.user.js?v=${REQUIRED_COMPANION_VERSION}`,
+    window.location.origin,
+  ).toString();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -174,7 +178,7 @@ export function ScoreLinkImport({ isOpen, onClose, onImported }: ScoreLinkImport
               <a className={styles.secondaryLink} href={isAndroid ? 'https://www.tampermonkey.net/?browser=firefox.android' : 'https://www.tampermonkey.net/'} target="_blank" rel="noreferrer">
                 <ExternalLink size={16} /> {t('installTampermonkey')}
               </a>
-              <a className={styles.primaryLink} href="/score-link-companion.user.js" target="_blank" rel="noreferrer">
+              <a className={styles.primaryLink} href={companionInstallUrl} target="_blank" rel="noreferrer">
                 <ExternalLink size={16} /> {t('installScoreLinkCompanion')}
               </a>
             </div>

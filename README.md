@@ -103,6 +103,15 @@ bun install   # or: npm install
 bun run dev   # or: npm run dev
 ```
 
+For environments with an npm mirror, keep the lockfile portable and pass the
+registry at install time:
+
+```bash
+NOTERAIN_NPM_REGISTRY=http://your-registry:4873/ npm run install:deps
+```
+
+Without `NOTERAIN_NPM_REGISTRY`, the installer uses `https://registry.npmjs.org/`.
+
 The app runs directly on the host at `http://localhost:5173` — no Docker or backend server required. Vite provides React Fast Refresh and CSS hot module replacement, so source changes appear without a full reload. The server also listens on the host's LAN address for testing from other devices.
 
 Web MIDI works on `http://localhost` because Chrome treats localhost as a secure context. For access through a LAN address, start the HTTPS development server instead:

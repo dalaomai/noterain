@@ -10,6 +10,7 @@
     "client"
   ],
   "scripts": {
+    "install:deps": "node scripts/install-dependencies.mjs",
     "dev": "npm run dev -w client",
     "build": "npm run build -w client",
     "preview": "npm run preview -w client",

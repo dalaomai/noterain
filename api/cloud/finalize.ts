@@ -23,13 +23,12 @@ export async function POST(request: Request) {
       token: blobToken(),
       useCache: false,
     });
-    if (!source?.stream || source.blob.size !== metadata.byteSize) {
+    if (!source?.stream) throw new Error('UPLOADED_SOURCE_MISSING');
+    const sourceBytes = new Uint8Array(await new Response(source.stream).arrayBuffer());
+    if (sourceBytes.byteLength !== metadata.byteSize) {
       throw new Error('UPLOADED_SOURCE_INCOMPLETE');
     }
-    validateSourceBytes(
-      new Uint8Array(await new Response(source.stream).arrayBuffer()),
-      metadata,
-    );
+    validateSourceBytes(sourceBytes, metadata);
     const pathParts = pathname.split('/');
     const uploadId = pathParts[2];
     const sourceName = pathParts.at(-1);
@@ -65,6 +64,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[CloudScores] Finalization failed:', error);
     if (pathname) await del(pathname, { token: blobToken() }).catch(() => undefined);
-    return json({ error: 'FINALIZE_FAILED' }, { status: 400 });
+    return json({
+      error: error instanceof Error ? error.message : 'FINALIZE_FAILED',
+    }, { status: 400 });
   }
 }

@@ -72,6 +72,13 @@ const extension = (format: CloudScoreFormat) => ({
   noterain: 'noterain',
 })[format];
 
+const contentType = (format: CloudScoreFormat) => ({
+  midi: 'audio/midi',
+  musicxml: 'application/vnd.recordare.musicxml+xml',
+  mxl: 'application/vnd.recordare.musicxml',
+  noterain: 'application/vnd.noterain.svg-midi+zip',
+})[format];
+
 function splitContributors(value: unknown) {
   return typeof value === 'string'
     ? value.split(/[;,，、]/).map((part) => part.trim()).filter(Boolean)
@@ -125,7 +132,7 @@ export async function uploadScoreSilently(file: File, score: MidiFile) {
       title: embedded.title || score.title || file.name.replace(/\.[^.]+$/, ''),
       fileName: file.name,
       format,
-      mimeType: file.type || 'application/octet-stream',
+      mimeType: contentType(format),
       byteSize: file.size,
       source: score.sourceFormat === 'svg-midi' ? 'musescore' : 'local',
       sourceUrl: embedded.sourceUrl,
@@ -141,6 +148,7 @@ export async function uploadScoreSilently(file: File, score: MidiFile) {
       access: 'private',
       handleUploadUrl: `${apiBase}/api/cloud/upload`,
       clientPayload: JSON.stringify(metadata),
+      contentType: 'application/octet-stream',
       multipart: file.size > 5 * 1024 * 1024,
     });
     return true;

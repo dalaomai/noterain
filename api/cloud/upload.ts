@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         const expectedPrefix = `scores/${metadata.sha256}/source.`;
         if (!pathname.startsWith(expectedPrefix)) throw new Error('INVALID_BLOB_PATH');
         return {
-          allowedContentTypes: [metadata.mimeType || 'application/octet-stream'],
+          allowedContentTypes: ['application/octet-stream'],
           maximumSizeInBytes: Number(process.env.CLOUD_MAX_FILE_SIZE ?? 52_428_800),
           addRandomSuffix: false,
           allowOverwrite: true,

@@ -7,9 +7,8 @@ import {
   json,
 } from '../../../_lib/cloud.js';
 
-export default async function handler(request: Request) {
+export async function GET(request: Request) {
   if (!cloudIndexConfigured()) return json({ error: 'CLOUD_SEARCH_UNAVAILABLE' }, { status: 503 });
-  if (request.method !== 'GET') return json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
   const id = new URL(request.url).pathname.split('/').at(-2) ?? '';
   try {
     await ensureCloudScoreTable();

@@ -7,8 +7,7 @@ import {
   parseMetadata,
 } from '../../_lib/cloud.js';
 
-export default async function handler(request: Request) {
-  if (request.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
+export async function POST(request: Request) {
   if (!cloudConfigured()) return json({ error: 'CLOUD_UNAVAILABLE' }, { status: 503 });
   const secret = request.headers.get('x-cloud-admin-secret');
   if (!process.env.CLOUD_ADMIN_SECRET || secret !== process.env.CLOUD_ADMIN_SECRET) {

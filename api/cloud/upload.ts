@@ -6,12 +6,11 @@ import {
   indexCloudScore,
   json,
   parseMetadata,
-    validateSourceBytes,
+  validateSourceBytes,
 } from '../_lib/cloud.js';
 
-export default async function handler(request: Request) {
+export async function POST(request: Request) {
   if (!cloudConfigured()) return json({ error: 'CLOUD_UNAVAILABLE' }, { status: 503 });
-  if (request.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
   try {
     const body = await request.json() as HandleUploadBody;
     const result = await handleUpload({
@@ -32,16 +31,16 @@ export default async function handler(request: Request) {
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         const metadata = parseMetadata(tokenPayload);
-          const source = await get(blob.pathname, {
-            access: 'private',
-            token: blobToken(),
-            useCache: false,
-          });
-          if (!source?.stream) throw new Error('UPLOADED_SOURCE_MISSING');
-          validateSourceBytes(
-            new Uint8Array(await new Response(source.stream).arrayBuffer()),
-            metadata,
-          );
+        const source = await get(blob.pathname, {
+          access: 'private',
+          token: blobToken(),
+          useCache: false,
+        });
+        if (!source?.stream) throw new Error('UPLOADED_SOURCE_MISSING');
+        validateSourceBytes(
+          new Uint8Array(await new Response(source.stream).arrayBuffer()),
+          metadata,
+        );
         const completed: typeof metadata = {
           ...metadata,
           originalBlobUrl: blob.pathname,

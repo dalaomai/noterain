@@ -1,6 +1,6 @@
 import { cloudConfigured, cloudIndexConfigured, json } from '../_lib/cloud.js';
 
-export default async function handler() {
+export async function GET() {
   const available = cloudConfigured();
   return json({
     available,
@@ -8,4 +8,8 @@ export default async function handler() {
     search: available && cloudIndexConfigured(),
     maxFileSize: Number(process.env.CLOUD_MAX_FILE_SIZE ?? 52_428_800),
   }, { status: available ? 200 : 503 });
+}
+
+export async function HEAD() {
+  return new Response(null, { status: cloudConfigured() ? 200 : 503 });
 }

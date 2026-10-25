@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const resultBlob = await get(pathname, {
       access: 'private',
       token: blobToken(),
+      useCache: false,
     });
     if (!resultBlob?.stream || !resultBlob.blob.size) {
       return json({ error: 'SOURCE_INCOMPLETE' }, { status: 409 });

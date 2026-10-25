@@ -18,8 +18,16 @@ export async function GET(request: Request) {
   }
   try {
     const [source, metadata] = await Promise.all([
-      get(`scores/${id}/source.${extension}`, { access: 'private', token: blobToken() }),
-      get(`scores/${id}/metadata.json`, { access: 'private', token: blobToken() }),
+      get(`scores/${id}/source.${extension}`, {
+        access: 'private',
+        token: blobToken(),
+        useCache: false,
+      }),
+      get(`scores/${id}/metadata.json`, {
+        access: 'private',
+        token: blobToken(),
+        useCache: false,
+      }),
     ]);
     const complete = Boolean(source?.blob.size && metadata?.blob.size);
     return json({ complete }, { status: complete ? 200 : 202 });

@@ -118,10 +118,40 @@ function parseStaffLines(path: string): SvgStaff[] {
 
 function parseBarlines(path: string): Array<{ x: number; top: number; bottom: number }> {
   const verticalLine = new RegExp(String.raw`M(${NUMBER})[ ,](${NUMBER})v(${NUMBER})`, 'gi');
-  return [...path.matchAll(verticalLine)].map((match) => {
+  const segments = [...path.matchAll(verticalLine)].map((match) => {
     const top = Number(match[2]);
     return { x: Number(match[1]), top, bottom: top + Number(match[3]) };
-  });
+  }).sort((left, right) => left.x - right.x || left.top - right.top);
+  const merged: typeof segments = [];
+  for (const segment of segments) {
+    const previous = merged[merged.length - 1];
+    if (
+      previous
+      && Math.abs(previous.x - segment.x) < 0.1
+      && segment.top <= previous.bottom + 5
+    ) {
+      previous.top = Math.min(previous.top, segment.top);
+      previous.bottom = Math.max(previous.bottom, segment.bottom);
+    } else merged.push({ ...segment });
+  }
+  return merged;
+}
+
+function mergeNearbyBarlines(
+  barlines: Array<{ x: number; top: number; bottom: number }>,
+  threshold: number,
+) {
+  const groups: Array<typeof barlines> = [];
+  for (const barline of barlines) {
+    const group = groups[groups.length - 1];
+    if (!group || barline.x - group[group.length - 1].x > threshold) groups.push([barline]);
+    else group.push(barline);
+  }
+  return groups.map((group) => ({
+    x: group.reduce((sum, barline) => sum + barline.x, 0) / group.length,
+    top: Math.min(...group.map((barline) => barline.top)),
+    bottom: Math.max(...group.map((barline) => barline.bottom)),
+  }));
 }
 
 function parseNoteAnchors(svg: string): Array<{ x: number; y: number }> {
@@ -575,7 +605,8 @@ function groupSystems(
   const systems: SvgSystem[] = [];
   for (let index = 0; index < staves.length;) {
     const first = staves[index];
-    const candidates = barlines.filter((barline) => Math.abs(barline.top - first.top) < 0.1);
+    const boundaryTolerance = first.spacing * 0.25;
+    const candidates = barlines.filter((barline) => Math.abs(barline.top - first.top) <= boundaryTolerance);
     const boundary = candidates.reduce(
       (largest, barline) => Math.max(largest, barline.bottom),
       first.bottom,
@@ -593,11 +624,15 @@ function groupSystems(
     const regionBottom = nextStaff === undefined
       ? Number.POSITIVE_INFINITY
       : (bottom + nextStaff.top) / 2;
-    const systemBarlines = barlines
-      .filter(
-        (barline) => Math.abs(barline.top - first.top) < 0.1 && Math.abs(barline.bottom - bottom) < 0.1,
+    const systemBarlines = mergeNearbyBarlines(
+      barlines.filter(
+        (barline) =>
+          Math.abs(barline.top - first.top) <= boundaryTolerance
+          && barline.bottom >= bottom - boundaryTolerance,
       )
-      .sort((left, right) => left.x - right.x);
+        .sort((left, right) => left.x - right.x),
+      first.spacing * 0.75,
+    );
     const systemNotes = noteAnchors.flatMap((note) => {
       if (note.y < first.top - first.spacing * 4 || note.y > bottom + first.spacing * 4) return [];
       const staff = systemStaves.reduce((best, candidate, staffIndex) => {

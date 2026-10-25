@@ -54,6 +54,9 @@ test('link import returns SVG and MIDI without invoking MusicXML reconstruction'
   assert.match(controls, /aria-haspopup="menu"/);
   assert.match(controls, /t\('importLocalScore'\)/);
   assert.match(controls, /t\('importScoreLink'\)/);
+  assert.match(controls, /currentFile\?\.sourceFormat === 'svg-midi'/);
+  assert.match(controls, /downloadSvgMidiPackage\(currentFile\)/);
+  assert.match(controls, /t\('downloadSvgMidiPackage'\)/);
   assert.doesNotMatch(controls, /aria-label=\{t\('importScoreLink'\)\}/);
 });
 

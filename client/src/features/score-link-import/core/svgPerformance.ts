@@ -65,13 +65,20 @@ export function buildSvgPerformanceScore(file: MidiFile, pages: string[]): SvgPe
           if (!column || anchor.x - column[0].x > system.staves[0].spacing * 0.6) columns.push([anchor]);
           else column.push(anchor);
         }
-        onsetGroups.forEach((group, groupIndex) => {
-          if (!columns.length) return;
-          const columnIndex = onsetGroups.length === 1
-            ? Math.floor(columns.length / 2)
-            : Math.round(groupIndex * (columns.length - 1) / (onsetGroups.length - 1));
-          const column = columns[columnIndex];
-          const sortedNotes = [...group].sort((left, right) => right.noteNumber - left.noteNumber);
+        columns.forEach((column, columnIndex) => {
+          if (!onsetGroups.length) return;
+          const groupPosition = columns.length === 1
+            ? 0
+            : columnIndex * (onsetGroups.length - 1) / (columns.length - 1);
+          const lowerIndex = Math.floor(groupPosition);
+          const upperIndex = Math.min(onsetGroups.length - 1, Math.ceil(groupPosition));
+          const lowerGroup = onsetGroups[lowerIndex];
+          const upperGroup = onsetGroups[upperIndex];
+          const fraction = groupPosition - lowerIndex;
+          const time = lowerGroup[0].startTime
+            + (upperGroup[0].startTime - lowerGroup[0].startTime) * fraction;
+          const representativeGroup = fraction < 0.5 ? lowerGroup : upperGroup;
+          const sortedNotes = [...representativeGroup].sort((left, right) => right.noteNumber - left.noteNumber);
           const points = column.map((anchor, anchorIndex) => ({
             x: anchor.x,
             y: anchor.y,
@@ -79,10 +86,10 @@ export function buildSvgPerformanceScore(file: MidiFile, pages: string[]): SvgPe
             pitch: sortedNotes[anchorIndex]?.noteNumber,
           }));
           systemAnchors.push({
-            time: group[0].startTime,
+            time,
             x: column.reduce((sum, anchor) => sum + anchor.x, 0) / column.length,
             points,
-            pitches: group.map((note) => note.noteNumber),
+            pitches: representativeGroup.map((note) => note.noteNumber),
           });
         });
       }
@@ -119,16 +126,20 @@ export function getSvgPlaybackPosition(score: SvgPerformanceScore, time: number)
   const measure = system.measures?.find((candidate) =>
     time >= candidate.startTime && time < candidate.endTime,
   ) ?? system.measures?.[system.measures.length - 1];
-  if (!anchors.length) {
+  const measureAnchors = measure
+    ? anchors.filter((candidate) => candidate.x >= measure.left && candidate.x <= measure.right)
+    : anchors;
+  if (!measureAnchors.length) {
     const progress = Math.max(0, Math.min(1,
       (time - system.startTime) / Math.max(0.001, system.endTime - system.startTime),
     ));
     return { system, measure, anchor: undefined, x: system.left + (system.right - system.left) * progress };
   }
-  let index = 0;
-  while (index + 1 < anchors.length && anchors[index + 1].time <= time) index++;
-  const anchor = anchors[index];
-  const next = anchors[index + 1];
+  let index = -1;
+  while (index + 1 < measureAnchors.length && measureAnchors[index + 1].time <= time) index++;
+  const anchor = measureAnchors[index];
+  const next = measureAnchors[index + 1];
+  if (!anchor) return { system, measure, anchor: undefined, x: measure?.left ?? system.left };
   const x = next
     ? anchor.x + (next.x - anchor.x) * Math.max(0, Math.min(1,
       (time - anchor.time) / Math.max(0.001, next.time - anchor.time),

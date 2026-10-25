@@ -69,6 +69,19 @@ test('pairs hairpin lines and extracts horizontal pedal spans', () => {
   assert.equal(page.systems[0].pedals[0].maxX, 90);
 });
 
+test('merges double barlines and accepts lines extending beyond the staves', () => {
+  const staffLines = [10, 15, 20, 25, 30, 50, 55, 60, 65, 70]
+    .map((y) => `M5 ${y}H105`)
+    .join('');
+  const page = parseSvgPage(
+    `<svg width="110" height="90"><path class="StaffLines" d="${staffLines}"/><path class="BarLine" d="M5 9.5v70M45 9.5v70M46 9.5v70M105 9.5v70"/><path class="Note" d="M20 20c1 0 2 1 3 2M70 60c1 0 2 1 3 2"/></svg>`,
+  );
+
+  assert.equal(page.systems.length, 1);
+  assert.deepEqual(page.systems[0].barlines, [5, 45.5, 105]);
+  assert.deepEqual(page.systems[0].noteAnchors.map((note) => note.measure), [0, 1]);
+});
+
 test('rejects pages without recoverable score structure', () => {
   assert.throws(
     () => parseSvgPage('<svg width="100" height="100"><path class="Note" d="M1 1"/></svg>'),

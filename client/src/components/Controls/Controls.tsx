@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   CloudDownload,
+  Download,
   CheckCircle2,
   Trash2,
   SlidersHorizontal,
@@ -92,6 +93,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
     currentFileId,
     setCurrentFile,
     loadSvgMidiScore,
+    downloadSvgMidiPackage,
     handleFilePicker,
     handleFileInput,
   } = useMidiFile();
@@ -322,6 +324,22 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
                 currentFileId={currentFileId}
                 onChange={setCurrentFile}
               />
+            )}
+
+            {currentFile?.sourceFormat === 'svg-midi' && currentFile.historyId && (
+              <button
+                type="button"
+                className={`${styles.button} ${styles.iconButton}`}
+                title={t('downloadSvgMidiPackage')}
+                aria-label={t('downloadSvgMidiPackage')}
+                onClick={() => {
+                  void downloadSvgMidiPackage(currentFile).catch((downloadError) => {
+                    console.warn('[ScorePackage] Cannot download package:', downloadError);
+                  });
+                }}
+              >
+                <Download size={18} />
+              </button>
             )}
 
             {/* Export button hidden for now

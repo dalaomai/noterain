@@ -49,3 +49,33 @@ test('maps MIDI onset groups to source SVG columns and interpolates playback', (
   assert.equal(midway.anchor.pitches[0], 60);
   assert.equal(midway.measure, score.systems[0].measures[0]);
 });
+
+test('does not retain a note marker from the previous measure', () => {
+  const measureOne = { startTime: 0, endTime: 2, left: 5, right: 55, top: 10, bottom: 70 };
+  const measureTwo = { startTime: 2, endTime: 4, left: 55, right: 105, top: 10, bottom: 70 };
+  const score = {
+    pages: [],
+    pageSizes: [],
+    systems: [{
+      page: 0,
+      top: 10,
+      bottom: 70,
+      staves: [],
+      left: 5,
+      right: 105,
+      startTime: 0,
+      endTime: 4,
+      measures: [measureOne, measureTwo],
+      anchors: [
+        { time: 1.5, x: 45, points: [], pitches: [] },
+        { time: 2.5, x: 65, points: [], pitches: [] },
+      ],
+    }],
+  };
+
+  const position = getSvgPlaybackPosition(score, 2.25);
+
+  assert.equal(position.measure, measureTwo);
+  assert.equal(position.anchor, undefined);
+  assert.equal(position.x, measureTwo.left);
+});

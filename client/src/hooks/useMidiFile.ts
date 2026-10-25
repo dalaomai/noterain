@@ -7,6 +7,7 @@ import {
   parseMusicXmlFile,
 } from '../lib/musicxml/parser';
 import { removeRawMidiData } from '../utils/storage';
+import { loadScoreHistoryFile } from '../utils/midiDb';
 import type { MidiFile } from '../types/midi';
 import type { CollectedScore } from '../features/score-link-import/core/types';
 import { buildSvgPerformanceScore } from '../features/score-link-import/core/svgPerformance';
@@ -166,6 +167,21 @@ export function useMidiFile() {
     [getCurrentFile]
   );
 
+  const downloadSvgMidiPackage = useCallback(async (file?: MidiFile) => {
+    const targetFile = file || getCurrentFile();
+    if (targetFile?.sourceFormat !== 'svg-midi' || !targetFile.historyId) return false;
+    const packageFile = await loadScoreHistoryFile(targetFile.historyId);
+    const url = URL.createObjectURL(packageFile);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = packageFile.name;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    return true;
+  }, [getCurrentFile]);
+
   /** Handle file drop */
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
@@ -210,6 +226,7 @@ export function useMidiFile() {
     updateFile,
     setCurrentFile,
     exportFile,
+    downloadSvgMidiPackage,
     handleDrop,
     handleFilePicker,
     handleFileInput,

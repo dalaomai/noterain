@@ -36,12 +36,18 @@ test('server stores recoverable sidecar metadata and supports private Blob store
   const upload = await readFile(new URL('../../api/cloud/upload.ts', import.meta.url), 'utf8');
   const download = await readFile(new URL('../../api/cloud/download.ts', import.meta.url), 'utf8');
   const rebuild = await readFile(new URL('../../api/cloud/admin/rebuild-index.ts', import.meta.url), 'utf8');
+  const status = await readFile(new URL('../../api/cloud/status.ts', import.meta.url), 'utf8');
 
   assert.match(upload, /metadata\.json/);
   assert.match(upload, /access: 'private'/);
   assert.match(upload, /validateSourceBytes/);
+  assert.match(upload, /uploads\/\$\{metadata\.sha256\}/);
+  assert.match(upload, /rename\(blob\.pathname, metadata\.originalBlobPath/);
+  assert.match(upload, /del\(blob\.pathname/);
   assert.match(download, /get\(pathname/);
   assert.match(download, /SOURCE_INCOMPLETE/);
+  assert.match(status, /source\.\$\{extension\}/);
+  assert.match(status, /Boolean\(source\?\.blob\.size && metadata\?\.blob\.size\)/);
   assert.match(rebuild, /endsWith\('\/metadata\.json'\)/);
   assert.match(rebuild, /SOURCE_INCOMPLETE/);
   assert.match(rebuild, /x-cloud-admin-secret/);

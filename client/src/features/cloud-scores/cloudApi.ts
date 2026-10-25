@@ -144,14 +144,23 @@ export async function uploadScoreSilently(file: File, score: MidiFile) {
       uploadedAt: new Date().toISOString(),
       originalBlobPath: `scores/${hash}/source.${extension(format)}`,
     };
-    await upload(metadata.originalBlobPath, file, {
+    const temporaryPath = `uploads/${hash}/${crypto.randomUUID()}/source.${extension(format)}`;
+    await upload(temporaryPath, file, {
       access: 'private',
       handleUploadUrl: `${apiBase}/api/cloud/upload`,
       clientPayload: JSON.stringify(metadata),
       contentType: 'application/octet-stream',
       multipart: file.size > 5 * 1024 * 1024,
     });
-    return true;
+    const statusParams = new URLSearchParams({ id: hash, format });
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const response = await fetch(`${apiBase}/api/cloud/status?${statusParams}`);
+      if (response.ok && (await response.json() as { complete?: boolean }).complete) {
+        return true;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));
+    }
+    return false;
   } catch (error) {
     console.warn('[CloudScores] Silent upload deferred:', error);
     return false;

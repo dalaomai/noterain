@@ -1,4 +1,4 @@
-import { get, put } from '@vercel/blob';
+import { del, get, put, rename } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import {
   blobToken,
@@ -19,8 +19,10 @@ export async function POST(request: Request) {
       body,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const metadata = parseMetadata(clientPayload);
-        const expectedPrefix = `scores/${metadata.sha256}/source.`;
-        if (!pathname.startsWith(expectedPrefix)) throw new Error('INVALID_BLOB_PATH');
+        const expectedPrefix = `uploads/${metadata.sha256}/`;
+        if (!pathname.startsWith(expectedPrefix) || !pathname.includes('/source.')) {
+          throw new Error('INVALID_BLOB_PATH');
+        }
         return {
           allowedContentTypes: ['application/octet-stream'],
           maximumSizeInBytes: Number(process.env.CLOUD_MAX_FILE_SIZE ?? 52_428_800),
@@ -31,47 +33,60 @@ export async function POST(request: Request) {
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         const metadata = parseMetadata(tokenPayload);
-        const source = await get(blob.pathname, {
-          access: 'private',
-          token: blobToken(),
-          useCache: false,
-        });
-        if (!source?.stream) throw new Error('UPLOADED_SOURCE_MISSING');
-        validateSourceBytes(
-          new Uint8Array(await new Response(source.stream).arrayBuffer()),
-          metadata,
-        );
-        const completed: typeof metadata = {
-          ...metadata,
-          originalBlobUrl: blob.pathname,
-        };
-        const sidecar = await put(
-          `scores/${metadata.sha256}/metadata.json`,
-          JSON.stringify(completed),
-          {
-            access: 'private',
-            contentType: 'application/json; charset=utf-8',
-            addRandomSuffix: false,
-            allowOverwrite: true,
-            token: blobToken(),
-          },
-        );
-        completed.metadataBlobUrl = sidecar.pathname;
-        await put(
-          `scores/${metadata.sha256}/metadata.json`,
-          JSON.stringify(completed),
-          {
-            access: 'private',
-            contentType: 'application/json; charset=utf-8',
-            addRandomSuffix: false,
-            allowOverwrite: true,
-            token: blobToken(),
-          },
-        );
         try {
-          await indexCloudScore(completed);
-        } catch (error) {
-          console.error('[CloudScores] Indexing failed; Blob remains recoverable:', error);
+          const source = await get(blob.pathname, {
+            access: 'private',
+            token: blobToken(),
+            useCache: false,
+          });
+          if (!source?.stream || source.blob.size !== metadata.byteSize) {
+            throw new Error('UPLOADED_SOURCE_INCOMPLETE');
+          }
+          validateSourceBytes(
+            new Uint8Array(await new Response(source.stream).arrayBuffer()),
+            metadata,
+          );
+          const published = await rename(blob.pathname, metadata.originalBlobPath, {
+            access: 'private',
+            addRandomSuffix: false,
+            allowOverwrite: true,
+            token: blobToken(),
+            contentType: 'application/octet-stream',
+          });
+          const completed: typeof metadata = {
+            ...metadata,
+            originalBlobUrl: published.pathname,
+          };
+          const sidecar = await put(
+            `scores/${metadata.sha256}/metadata.json`,
+            JSON.stringify(completed),
+            {
+              access: 'private',
+              contentType: 'application/json; charset=utf-8',
+              addRandomSuffix: false,
+              allowOverwrite: true,
+              token: blobToken(),
+            },
+          );
+          completed.metadataBlobUrl = sidecar.pathname;
+          await put(
+            `scores/${metadata.sha256}/metadata.json`,
+            JSON.stringify(completed),
+            {
+              access: 'private',
+              contentType: 'application/json; charset=utf-8',
+              addRandomSuffix: false,
+              allowOverwrite: true,
+              token: blobToken(),
+            },
+          );
+          try {
+            await indexCloudScore(completed);
+          } catch (error) {
+            console.error('[CloudScores] Indexing failed; Blob remains recoverable:', error);
+          }
+        } finally {
+          await del(blob.pathname, { token: blobToken() }).catch(() => undefined);
         }
       },
     });

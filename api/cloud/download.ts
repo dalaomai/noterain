@@ -20,7 +20,9 @@ export async function GET(request: Request) {
       access: 'private',
       token: blobToken(),
     });
-    if (!resultBlob?.stream) return json({ error: 'NOT_FOUND' }, { status: 404 });
+    if (!resultBlob?.stream || !resultBlob.blob.size) {
+      return json({ error: 'SOURCE_INCOMPLETE' }, { status: 409 });
+    }
     return new Response(resultBlob.stream, {
       headers: {
         'Content-Type': resultBlob.blob.contentType ?? 'application/octet-stream',

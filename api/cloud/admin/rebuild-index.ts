@@ -35,6 +35,12 @@ export async function POST(request: Request) {
         });
         if (!result?.stream) throw new Error('MISSING_METADATA');
         const metadata = parseMetadata(await new Response(result.stream).text());
+        const source = await get(metadata.originalBlobPath, {
+          access: 'private',
+          token: blobToken(),
+          useCache: false,
+        });
+        if (!source?.stream || !source.blob.size) throw new Error('SOURCE_INCOMPLETE');
         await indexCloudScore(metadata);
         restored++;
       } catch (error) {

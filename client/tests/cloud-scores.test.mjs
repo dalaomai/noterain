@@ -41,6 +41,8 @@ test('server stores recoverable sidecar metadata and supports private Blob store
   assert.match(upload, /access: 'private'/);
   assert.match(upload, /validateSourceBytes/);
   assert.match(download, /get\(pathname/);
+  assert.match(download, /SOURCE_INCOMPLETE/);
   assert.match(rebuild, /endsWith\('\/metadata\.json'\)/);
+  assert.match(rebuild, /SOURCE_INCOMPLETE/);
   assert.match(rebuild, /x-cloud-admin-secret/);
 });

@@ -34,7 +34,7 @@ test('cloud file classification inspects content for every supported format', as
 
 test('server stores recoverable sidecar metadata and supports private Blob stores', async () => {
   const upload = await readFile(new URL('../../api/cloud/upload.ts', import.meta.url), 'utf8');
-  const download = await readFile(new URL('../../api/cloud/scores/[id]/download.ts', import.meta.url), 'utf8');
+  const download = await readFile(new URL('../../api/cloud/download.ts', import.meta.url), 'utf8');
   const rebuild = await readFile(new URL('../../api/cloud/admin/rebuild-index.ts', import.meta.url), 'utf8');
 
   assert.match(upload, /metadata\.json/);

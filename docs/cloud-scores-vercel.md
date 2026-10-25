@@ -10,7 +10,11 @@ are absent or the API is unavailable.
 - Vercel Functions under `api/cloud/` expose capability, upload, search, download,
   and index rebuild endpoints.
 
-The supplied Blob store may be private. The score catalogue remains public through
+  The public download URL `/api/cloud/scores/:id/download` is explicitly rewritten
+  to the static Function `/api/cloud/download?id=:id`. This avoids relying on
+  framework-specific dynamic route filenames in a Vite project.
+
+  The supplied Blob store may be private. The score catalogue remains public through
 the API, while downloads are streamed by the public download Function.
 
 ## Environment

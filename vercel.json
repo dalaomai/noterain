@@ -15,6 +15,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/cloud/scores/:id/download",
+      "destination": "/api/cloud/download?id=:id"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

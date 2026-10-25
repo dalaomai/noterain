@@ -10,6 +10,7 @@ import { SvgPerformanceSheet } from './components/SvgPerformanceSheet/SvgPerform
 import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
 import { PwaStatus } from './components/PwaStatus/PwaStatus';
 import { startCloudUploadQueue } from './features/cloud-scores/cloudQueue';
+import { installE2EImportBridge } from './features/e2e/importBridge';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useMidiFile } from './hooks/useMidiFile';
 import { useMidiInput } from './hooks/useMidiInput';
@@ -21,9 +22,11 @@ function App() {
   useEffect(() => startCloudUploadQueue(), []);
 
   const { noteOn, noteOff, setSustain, resumeAudio, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity, audioError, isRetryingAudio, retryAudio } = useAudioEngine();
-  const { handleDrop, currentFile } = useMidiFile();
+  const { handleDrop, currentFile, loadFile } = useMidiFile();
   const { settings, setLiveNote, addSatisfiedWaitNote } = useMidiStore();
   const { t } = useI18n();
+
+  useEffect(() => installE2EImportBridge(loadFile), [loadFile]);
 
   // Store audio functions in ref to avoid MIDI listener re-subscriptions
   const audioRef = useRef({ noteOn, noteOff, setSustain, resumeAudio, settings, isLoading });

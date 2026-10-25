@@ -12,7 +12,8 @@
   "scripts": {
     "install:deps": "node scripts/install-dependencies.mjs",
     "dev": "npm run dev -w client",
-    "build": "npm run build -w client",
+    "build": "npm run build -w client && npm run typecheck:api",
+    "typecheck:api": "tsc -p tsconfig.api.json",
     "preview": "npm run preview -w client",
     "lint": "npm run lint -w client",
     "test": "npm run test -w client",
@@ -20,5 +21,9 @@
   },
   "devDependencies": {
     "prettier": "^3.4.2"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2",
+    "@vercel/postgres": "^0.10.0"
   }
 }

@@ -12,6 +12,7 @@ import type { MidiFile } from '../types/midi';
 import type { CollectedScore } from '../features/score-link-import/core/types';
 import { buildSvgPerformanceScore } from '../features/score-link-import/core/svgPerformance';
 import { createScorePackage, parseScorePackage } from '../features/score-link-import/core/scorePackage';
+import { enqueueCloudUpload } from '../features/cloud-scores/cloudQueue';
 
 function isSupportedScoreFile(file: File): boolean {
   return /\.(mid|midi|noterain)$/i.test(file.name) || isMusicXmlFileName(file.name);
@@ -50,6 +51,7 @@ export function useMidiFile() {
       midiFile.sourceFormat = 'svg-midi';
       midiFile.svgScore = buildSvgPerformanceScore(midiFile, score.pages);
       midiFile.historyId = await useScoreHistoryStore.getState().recordImport(source, midiFile);
+      if (midiFile.historyId) enqueueCloudUpload(midiFile.historyId, midiFile);
       addFile(midiFile);
       setCurrentFile(midiFile.id);
       return midiFile;
@@ -69,6 +71,7 @@ export function useMidiFile() {
         ? await parseMusicXmlFile(file)
         : parseMidiFile(await file.arrayBuffer(), file.name);
       midiFile.historyId = await useScoreHistoryStore.getState().recordImport(file, midiFile);
+      if (midiFile.historyId) enqueueCloudUpload(midiFile.historyId, midiFile);
       addFile(midiFile);
       setCurrentFile(midiFile.id);
       return midiFile;

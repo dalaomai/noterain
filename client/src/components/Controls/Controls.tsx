@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { ScoreHistory } from '../ScoreHistory/ScoreHistory';
 import { ScoreLinkImport } from '../../features/score-link-import/ScoreLinkImport';
+import { CloudScoreImport } from '../../features/cloud-scores/CloudScoreImport';
+import { getCloudCapabilities } from '../../features/cloud-scores/cloudApi';
 import { FloatingPlaybackRemote } from '../FloatingPlaybackRemote/FloatingPlaybackRemote';
 import { ScoreSelector } from './ScoreSelector';
 import { usePlayback } from '../../hooks/usePlayback';
@@ -72,6 +74,8 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isLinkImportOpen, setIsLinkImportOpen] = useState(false);
+  const [isCloudImportOpen, setIsCloudImportOpen] = useState(false);
+  const [cloudSearchAvailable, setCloudSearchAvailable] = useState(false);
 
   const {
     isPlaying,
@@ -97,6 +101,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
     currentFile,
     currentFileId,
     setCurrentFile,
+    loadFile,
     loadSvgMidiScore,
     downloadSvgMidiPackage,
     handleFilePicker,
@@ -132,8 +137,18 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
   const fullscreen = useFullscreen();
   const toolbar = useAutoHideToolbar(
     fullscreen.isFullscreen,
-    isExpanded || isHistoryOpen || isLinkImportOpen,
+    isExpanded || isHistoryOpen || isLinkImportOpen || isCloudImportOpen,
   );
+
+  useEffect(() => {
+    void getCloudCapabilities()
+      .then((capabilities) => {
+        setCloudSearchAvailable(capabilities.search);
+      })
+      .catch(() => {
+        setCloudSearchAvailable(false);
+      });
+  }, []);
 
   useEffect(() => {
     const normalized = normalizeSimplifiedDensity(settings.simplifiedScoreDensity);
@@ -299,6 +314,24 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
                       <small>{t('importScoreLinkDescription')}</small>
                     </span>
                   </button>
+                    {cloudSearchAvailable && (
+                      <button
+                        type="button"
+                        className={styles.importOption}
+                        role="menuitem"
+                        onClick={() => {
+                          setIsImportMenuOpen(false);
+                          setIsExpanded(false);
+                          setIsCloudImportOpen(true);
+                        }}
+                      >
+                        <CloudDownload size={17} />
+                        <span>
+                          <strong>{t('importCloudScore')}</strong>
+                          <small>{t('importCloudScoreDescription')}</small>
+                        </span>
+                      </button>
+                    )}
                 </div>
               )}
               <input
@@ -1393,6 +1426,12 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
           await loadSvgMidiScore(score);
         }}
       />
+      {isCloudImportOpen && (
+        <CloudScoreImport
+          onClose={() => setIsCloudImportOpen(false)}
+          onImport={loadFile}
+        />
+      )}
       {currentFile && (settings.showFloatingRemote ?? true) && (
         <FloatingPlaybackRemote
           isPlaying={isPlaying}

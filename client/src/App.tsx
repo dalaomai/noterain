@@ -9,6 +9,7 @@ import { SheetMusic } from './components/SheetMusic/SheetMusic';
 import { SvgPerformanceSheet } from './components/SvgPerformanceSheet/SvgPerformanceSheet';
 import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
 import { PwaStatus } from './components/PwaStatus/PwaStatus';
+import { startCloudUploadQueue } from './features/cloud-scores/cloudQueue';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useMidiFile } from './hooks/useMidiFile';
 import { useMidiInput } from './hooks/useMidiInput';
@@ -17,6 +18,8 @@ import { useMidiStore, calculateNoteRange } from './stores/midiStore';
 import './App.css';
 
 function App() {
+  useEffect(() => startCloudUploadQueue(), []);
+
   const { noteOn, noteOff, setSustain, resumeAudio, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity, audioError, isRetryingAudio, retryAudio } = useAudioEngine();
   const { handleDrop, currentFile } = useMidiFile();
   const { settings, setLiveNote, addSatisfiedWaitNote } = useMidiStore();

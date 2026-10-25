@@ -41,6 +41,21 @@
   transition: width 0.2s ease-out;
 }
 
+.indeterminate {
+  width: 42%;
+  animation: loading-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes loading-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(340%);
+  }
+}
+
 .progressText {
   font-size: 0.875rem;
   color: var(--text-secondary);

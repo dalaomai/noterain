@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LoadingScreen } from '../../components/LoadingScreen/LoadingScreen';
 import { useI18n } from '../../hooks/useI18n';
 import type { MidiFile } from '../../types/midi';
 import {
@@ -20,6 +21,7 @@ export function CloudScoreImport({ onClose, onImport }: CloudScoreImportProps) {
   const [items, setItems] = useState<CloudScoreSummary[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [importingId, setImportingId] = useState<string | null>(null);
+  const importingScore = items.find((score) => score.id === importingId);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,10 +56,11 @@ export function CloudScoreImport({ onClose, onImport }: CloudScoreImportProps) {
   };
 
   return (
-    <div className={styles.backdrop} role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
-      <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="cloud-score-title">
+    <>
+      <div className={styles.backdrop} role="presentation" onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !importingId) onClose();
+      }}>
+        <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="cloud-score-title">
         <header className={styles.header}>
           <h2 id="cloud-score-title">{t('cloudScores')}</h2>
           <button type="button" className={styles.close} onClick={onClose} aria-label={t('closeCloudScores')}>{t('closeCloudScores')}</button>
@@ -98,7 +101,18 @@ export function CloudScoreImport({ onClose, onImport }: CloudScoreImportProps) {
             </button>
           ))}
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+      {importingScore && (
+        <LoadingScreen
+          phase="loading"
+          downloadProgress={0}
+          decodeProgress={0}
+          totalSamples={0}
+          totalLayers={0}
+          scoreTitle={importingScore.title}
+        />
+      )}
+    </>
   );
 }

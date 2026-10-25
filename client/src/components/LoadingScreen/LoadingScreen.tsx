@@ -9,6 +9,7 @@ interface LoadingScreenProps {
   decodeProgress: number;
   totalSamples: number;
   totalLayers: number;
+  scoreTitle?: string;
 }
 
 export function LoadingScreen({
@@ -17,8 +18,22 @@ export function LoadingScreen({
   decodeProgress,
   totalSamples,
   totalLayers,
+  scoreTitle,
 }: LoadingScreenProps) {
   const { t } = useI18n();
+  if (scoreTitle) {
+    return (
+      <div className={styles.overlay} role="status" aria-live="polite">
+        <div className={styles.container}>
+          <div className={styles.title}>{t('loadingCloudScore')}</div>
+          <div className={styles.progressBar}>
+            <div className={`${styles.progressFill} ${styles.indeterminate}`} />
+          </div>
+          <div className={styles.progressText}>{scoreTitle}</div>
+        </div>
+      </div>
+    );
+  }
   const isLoadingSamples = phase === 'loading' || phase === 'downloading';
   const isDownloading = phase === 'downloading';
   const progress = isLoadingSamples ? downloadProgress : decodeProgress;
@@ -26,7 +41,7 @@ export function LoadingScreen({
   const percentage = Math.round((progress / total) * 100);
 
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} role="status" aria-live="polite">
       <div className={styles.container}>
         <div className={styles.title}>
           {isLoadingSamples

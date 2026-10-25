@@ -36,6 +36,17 @@ test('cloud file classification inspects content for every supported format', as
   }
 });
 
+test('cloud score import shows the shared loading screen while opening a score', async () => {
+  const cloudImport = await readFile(new URL('../src/features/cloud-scores/CloudScoreImport.tsx', import.meta.url), 'utf8');
+  const loadingScreen = await readFile(new URL('../src/components/LoadingScreen/LoadingScreen.tsx', import.meta.url), 'utf8');
+  const loadingStyles = await readFile(new URL('../src/components/LoadingScreen/LoadingScreen.module.css', import.meta.url), 'utf8');
+
+  assert.match(cloudImport, /<LoadingScreen/);
+  assert.match(cloudImport, /scoreTitle=\{importingScore\.title\}/);
+  assert.match(loadingScreen, /loadingCloudScore/);
+  assert.match(loadingStyles, /\.indeterminate/);
+});
+
 test('server stores recoverable sidecar metadata and supports private Blob stores', async () => {
   const upload = await readFile(new URL('../../api/cloud/upload.ts', import.meta.url), 'utf8');
   const finalize = await readFile(new URL('../../api/cloud/finalize.ts', import.meta.url), 'utf8');

@@ -210,6 +210,7 @@ export const en = {
   loadingPianoSamples: 'Loading Piano Samples',
   downloadingPianoSamples: 'Downloading Piano Samples',
   decodingPianoSamples: 'Decoding Piano Samples',
+  loadingCloudScore: 'Loading cloud score',
   samplesProgress: '{progress} / {total} samples',
   velocityLayersProgress: '{progress} / {total} velocity layers',
 
@@ -440,6 +441,7 @@ export const zh: Record<TranslationKeys, string> = {
   loadingPianoSamples: '正在读取钢琴采样',
   downloadingPianoSamples: '正在下载钢琴采样',
   decodingPianoSamples: '正在解码钢琴采样',
+  loadingCloudScore: '正在载入云端乐谱',
   samplesProgress: '{progress} / {total} 个采样',
   velocityLayersProgress: '{progress} / {total} 个力度分层',
 

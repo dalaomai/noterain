@@ -36,7 +36,8 @@ Do not commit `.env.local`; it is ignored by Git.
 - Every successful local import is queued for a silent background upload.
 - Failed uploads never block local import or playback and retry with backoff.
 - Original `midi`, `musicxml`, `mxl`, and `noterain` files are preserved unchanged.
-- `scores/{sha256}/metadata.json` contains enough metadata to rebuild Postgres.
+- Immutable `scores/{sha256}/versions/{uploadId}/metadata.json` sidecars contain
+  enough metadata to rebuild Postgres without relying on overwrite consistency.
 - The cloud import menu is shown only when `/api/cloud/capabilities` reports search
   as available.
 

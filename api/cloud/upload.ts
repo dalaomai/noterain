@@ -46,40 +46,23 @@ export async function POST(request: Request) {
             new Uint8Array(await new Response(source.stream).arrayBuffer()),
             metadata,
           );
-          const existing = await get(metadata.originalBlobPath, {
+          const pathParts = blob.pathname.split('/');
+          const uploadId = pathParts[2];
+          const sourceName = pathParts.at(-1);
+          if (!uploadId || !sourceName) throw new Error('INVALID_TEMPORARY_PATH');
+          const publishedPath = `scores/${metadata.sha256}/versions/${uploadId}/${sourceName}`;
+          const published = await rename(blob.pathname, publishedPath, {
             access: 'private',
+            addRandomSuffix: false,
             token: blobToken(),
-            useCache: false,
-          }).catch(() => null);
-          let publishedPath = metadata.originalBlobPath;
-          let reuseExisting = false;
-          if (existing?.stream && existing.blob.size === metadata.byteSize) {
-            try {
-              validateSourceBytes(
-                new Uint8Array(await new Response(existing.stream).arrayBuffer()),
-                metadata,
-              );
-              reuseExisting = true;
-            } catch {
-              reuseExisting = false;
-            }
-          }
-          if (!reuseExisting) {
-            await del(metadata.originalBlobPath, { token: blobToken() }).catch(() => undefined);
-            const published = await rename(blob.pathname, metadata.originalBlobPath, {
-              access: 'private',
-              addRandomSuffix: false,
-              token: blobToken(),
-              contentType: 'application/octet-stream',
-            });
-            publishedPath = published.pathname;
-          }
+            contentType: 'application/octet-stream',
+          });
           const completed: typeof metadata = {
             ...metadata,
-            originalBlobUrl: publishedPath,
+            originalBlobPath: published.pathname,
+            originalBlobUrl: published.pathname,
           };
-          const metadataPath = `scores/${metadata.sha256}/metadata.json`;
-          await del(metadataPath, { token: blobToken() }).catch(() => undefined);
+          const metadataPath = `scores/${metadata.sha256}/versions/${uploadId}/metadata.json`;
           completed.metadataBlobUrl = metadataPath;
           await put(
             metadataPath,

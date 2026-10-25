@@ -46,31 +46,43 @@ export async function POST(request: Request) {
             new Uint8Array(await new Response(source.stream).arrayBuffer()),
             metadata,
           );
-          const published = await rename(blob.pathname, metadata.originalBlobPath, {
+          const existing = await get(metadata.originalBlobPath, {
             access: 'private',
-            addRandomSuffix: false,
-            allowOverwrite: true,
             token: blobToken(),
-            contentType: 'application/octet-stream',
-          });
+            useCache: false,
+          }).catch(() => null);
+          let publishedPath = metadata.originalBlobPath;
+          let reuseExisting = false;
+          if (existing?.stream && existing.blob.size === metadata.byteSize) {
+            try {
+              validateSourceBytes(
+                new Uint8Array(await new Response(existing.stream).arrayBuffer()),
+                metadata,
+              );
+              reuseExisting = true;
+            } catch {
+              reuseExisting = false;
+            }
+          }
+          if (!reuseExisting) {
+            await del(metadata.originalBlobPath, { token: blobToken() }).catch(() => undefined);
+            const published = await rename(blob.pathname, metadata.originalBlobPath, {
+              access: 'private',
+              addRandomSuffix: false,
+              token: blobToken(),
+              contentType: 'application/octet-stream',
+            });
+            publishedPath = published.pathname;
+          }
           const completed: typeof metadata = {
             ...metadata,
-            originalBlobUrl: published.pathname,
+            originalBlobUrl: publishedPath,
           };
-          const sidecar = await put(
-            `scores/${metadata.sha256}/metadata.json`,
-            JSON.stringify(completed),
-            {
-              access: 'private',
-              contentType: 'application/json; charset=utf-8',
-              addRandomSuffix: false,
-              allowOverwrite: true,
-              token: blobToken(),
-            },
-          );
-          completed.metadataBlobUrl = sidecar.pathname;
+          const metadataPath = `scores/${metadata.sha256}/metadata.json`;
+          await del(metadataPath, { token: blobToken() }).catch(() => undefined);
+          completed.metadataBlobUrl = metadataPath;
           await put(
-            `scores/${metadata.sha256}/metadata.json`,
+            metadataPath,
             JSON.stringify(completed),
             {
               access: 'private',

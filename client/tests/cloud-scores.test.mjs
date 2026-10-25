@@ -47,6 +47,8 @@ test('server stores recoverable sidecar metadata and supports private Blob store
   assert.match(upload, /validateSourceBytes/);
   assert.match(upload, /uploads\/\$\{metadata\.sha256\}/);
   assert.match(upload, /rename\(blob\.pathname, metadata\.originalBlobPath/);
+  assert.match(upload, /reuseExisting/);
+  assert.match(upload, /del\(metadata\.originalBlobPath/);
   assert.match(upload, /del\(blob\.pathname/);
   assert.match(download, /get\(pathname/);
   assert.match(download, /SOURCE_INCOMPLETE/);

@@ -15,6 +15,10 @@ test('cloud integration remains optional and never blocks local import', async (
   assert.match(api, /application\/vnd\.recordare\.musicxml/);
   assert.match(queue, /RETRY_DELAYS/);
   assert.match(queue, /window\.addEventListener\('online'/);
+  assert.match(queue, /listScoreHistory/);
+  assert.match(queue, /isCloudScoreComplete/);
+  assert.match(queue, /reconcileCloudUploadQueue/);
+  assert.match(api, /if \(await isCloudScoreComplete\(hash, format\)\) return true/);
   assert.match(midiFile, /void processCloudUploadQueue|enqueueCloudUpload/);
   assert.match(controls, /cloudSearchAvailable &&/);
 });

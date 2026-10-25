@@ -65,6 +65,22 @@ async function sha256(file: File) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export async function getCloudScoreIdentity(file: File) {
+  const format = await detectScoreFormat(file);
+  if (!format) return null;
+  return { format, hash: await sha256(file) };
+}
+
+export async function isCloudScoreComplete(hash: string, format: CloudScoreFormat) {
+  try {
+    const params = new URLSearchParams({ id: hash, format });
+    const response = await fetch(`${apiBase}/api/cloud/status?${params}`);
+    return response.ok && (await response.json() as { complete?: boolean }).complete === true;
+  } catch {
+    return false;
+  }
+}
+
 const extension = (format: CloudScoreFormat) => ({
   midi: 'mid',
   musicxml: 'musicxml',
@@ -121,9 +137,10 @@ async function readEmbeddedMetadata(file: File, format: CloudScoreFormat) {
 export async function uploadScoreSilently(file: File, score: MidiFile) {
   try {
     const capabilities = await getCloudCapabilities();
-    const format = await detectScoreFormat(file);
-    if (!capabilities.upload || !format || file.size > capabilities.maxFileSize) return false;
-    const hash = await sha256(file);
+    const identity = await getCloudScoreIdentity(file);
+    if (!capabilities.upload || !identity || file.size > capabilities.maxFileSize) return false;
+    const { format, hash } = identity;
+    if (await isCloudScoreComplete(hash, format)) return true;
     const embedded = await readEmbeddedMetadata(file, format);
     const metadata: CloudScoreMetadata = {
       schemaVersion: 1,
@@ -152,12 +169,8 @@ export async function uploadScoreSilently(file: File, score: MidiFile) {
       contentType: 'application/octet-stream',
       multipart: file.size > 5 * 1024 * 1024,
     });
-    const statusParams = new URLSearchParams({ id: hash, format });
     for (let attempt = 0; attempt < 6; attempt++) {
-      const response = await fetch(`${apiBase}/api/cloud/status?${statusParams}`);
-      if (response.ok && (await response.json() as { complete?: boolean }).complete) {
-        return true;
-      }
+      if (await isCloudScoreComplete(hash, format)) return true;
       await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));
     }
     return false;

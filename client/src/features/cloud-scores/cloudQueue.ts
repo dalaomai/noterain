@@ -1,6 +1,11 @@
 import type { MidiFile } from '../../types/midi';
-import { loadScoreHistoryFile } from '../../utils/midiDb';
-import { uploadScoreSilently } from './cloudApi';
+import { listScoreHistory, loadScoreHistoryFile } from '../../utils/midiDb';
+import {
+  getCloudCapabilities,
+  getCloudScoreIdentity,
+  isCloudScoreComplete,
+  uploadScoreSilently,
+} from './cloudApi';
 
 const STORAGE_KEY = 'noterain-cloud-upload-queue-v1';
 const RETRY_DELAYS = [10_000, 30_000, 120_000, 600_000, 3_600_000];
@@ -93,8 +98,36 @@ export async function processCloudUploadQueue() {
   }
 }
 
+async function reconcileCloudUploadQueue() {
+  if (!navigator.onLine || !(await getCloudCapabilities()).upload) return;
+  const jobs = readQueue();
+  const queuedHistoryIds = new Set(jobs.map((job) => job.historyId));
+  for (const entry of await listScoreHistory()) {
+    if (queuedHistoryIds.has(entry.id)) continue;
+    try {
+      const source = await loadScoreHistoryFile(entry.id);
+      const identity = await getCloudScoreIdentity(source);
+      if (!identity || await isCloudScoreComplete(identity.hash, identity.format)) continue;
+      jobs.push({
+        id: crypto.randomUUID(),
+        historyId: entry.id,
+        title: entry.title,
+        duration: entry.duration,
+        sourceFormat: entry.sourceFormat,
+        attempts: 0,
+        nextRetryAt: Date.now(),
+      });
+      queuedHistoryIds.add(entry.id);
+    } catch (error) {
+      console.warn('[CloudScores] Cannot reconcile local score:', error);
+    }
+  }
+  writeQueue(jobs);
+  await processCloudUploadQueue();
+}
+
 export function startCloudUploadQueue() {
-  const resume = () => void processCloudUploadQueue();
+  const resume = () => void reconcileCloudUploadQueue();
   window.addEventListener('online', resume);
   resume();
   return () => {

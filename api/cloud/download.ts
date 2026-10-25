@@ -13,21 +13,28 @@ export async function GET(request: Request) {
   if (!id.match(/^[a-f0-9]{64}$/)) return json({ error: 'INVALID_ID' }, { status: 400 });
   try {
     await ensureCloudScoreTable();
-    const result = await sql`SELECT blob_url FROM public_scores WHERE id = ${id} LIMIT 1`;
+    const result = await sql`
+      SELECT blob_url, byte_size FROM public_scores WHERE id = ${id} LIMIT 1
+    `;
     const pathname = result.rows[0]?.blob_url as string | undefined;
+    const expectedByteSize = Number(result.rows[0]?.byte_size);
     if (!pathname) return json({ error: 'NOT_FOUND' }, { status: 404 });
     const resultBlob = await get(pathname, {
       access: 'private',
       token: blobToken(),
       useCache: false,
     });
-    if (!resultBlob?.stream || !resultBlob.blob.size) {
+    if (!resultBlob?.stream) {
       return json({ error: 'SOURCE_INCOMPLETE' }, { status: 409 });
     }
-    return new Response(resultBlob.stream, {
+    const sourceBytes = new Uint8Array(await new Response(resultBlob.stream).arrayBuffer());
+    if (!Number.isFinite(expectedByteSize) || sourceBytes.byteLength !== expectedByteSize) {
+      return json({ error: 'SOURCE_INCOMPLETE' }, { status: 409 });
+    }
+    return new Response(sourceBytes, {
       headers: {
         'Content-Type': resultBlob.blob.contentType ?? 'application/octet-stream',
-        'Content-Length': String(resultBlob.blob.size ?? ''),
+        'Content-Length': String(sourceBytes.byteLength),
         'Content-Disposition': 'attachment',
         'Cache-Control': 'public, max-age=300',
       },

@@ -1,15 +1,36 @@
 .container {
   position: absolute;
   inset: 0 0 var(--piano-keyboard-collapsed-height, 44px);
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: scroll;
   scrollbar-gutter: stable;
+  scrollbar-color: var(--text-muted) var(--bg-surface);
+  scrollbar-width: auto;
   background: var(--canvas-bg);
   display: flex;
   justify-content: flex-start;
   padding: 16px;
   scroll-snap-type: y mandatory;
   box-sizing: border-box;
+}
+
+.container::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+.container::-webkit-scrollbar-thumb {
+  border: 3px solid var(--bg-surface);
+  border-radius: 6px;
+  background: var(--text-muted);
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
 
 .snapPoint {

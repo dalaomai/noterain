@@ -1,11 +1,36 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getSvgPlaybackPosition } from '../../features/score-link-import/core/svgPerformance';
 import { useMidiStore } from '../../stores/midiStore';
+import type { SvgPlaybackSystem } from '../../types/midi';
 import styles from './SvgPerformanceSheet.module.css';
+
+const SCROLL_DURATION_MS = 520;
+
+function easeInOutCubic(progress: number) {
+  return progress < 0.5
+    ? 4 * progress * progress * progress
+    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+}
+
+function getSystemViewPadding(system: SvgPlaybackSystem, scale: number) {
+  const upperStaff = system.staves[0];
+  if (!upperStaff) return 16;
+  const spacing = (upperStaff.bottom - upperStaff.top) / 4;
+  const highestNote = Math.min(
+    upperStaff.top,
+    ...system.anchors.flatMap((anchor) =>
+      anchor.points.filter((point) => point.staff === 1).map((point) => point.y),
+    ),
+  );
+  const noteOverhang = Math.max(0, upperStaff.top - highestNote);
+  const padding = Math.min(spacing * 4.5, spacing * 3.25 + noteOverhang);
+  return Math.max(16, padding * scale);
+}
 
 export function SvgPerformanceSheet() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const scrollAnimationRef = useRef<number | null>(null);
   const currentFile = useMidiStore((state) => state.getCurrentFile());
   const isPlaying = useMidiStore((state) => state.playback.isPlaying);
   const showCursor = useMidiStore((state) => state.settings.showPlaybackCursor);
@@ -29,6 +54,16 @@ export function SvgPerformanceSheet() {
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
   }, [score]);
+
+  useEffect(() => () => {
+    if (scrollAnimationRef.current !== null) {
+      cancelAnimationFrame(scrollAnimationRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying) followedSystemRef.current = -1;
+  }, [isPlaying]);
 
   useLayoutEffect(() => {
     if (!score) return;
@@ -58,19 +93,43 @@ export function SvgPerformanceSheet() {
   }, [score]);
 
   useEffect(() => {
-    if (!isPlaying || !position || systemIndex < 0 || followedSystemRef.current === systemIndex) return;
-    followedSystemRef.current = systemIndex;
+    if (!score || !isPlaying || !position || systemIndex < 0 || followedSystemRef.current === systemIndex) return;
     const page = pageRefs.current[position.system.page];
     const container = containerRef.current;
     if (!page || !container) return;
+    followedSystemRef.current = systemIndex;
     const pageRect = page.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const toolbar = document.getElementById('playback-toolbar');
+    const toolbarBottom = toolbar && !toolbar.inert
+      ? toolbar.getBoundingClientRect().bottom
+      : containerRect.top;
     const crop = crops[position.system.page] ?? { x: 0, y: 0, ...score!.pageSizes[position.system.page] };
     const scale = pageRect.width / crop.width;
-    const target = page.offsetTop + (position.system.top - crop.y) * scale - 24;
-    container.scrollTo({
-      top: Math.max(0, target),
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    });
+    const viewPadding = getSystemViewPadding(position.system, scale);
+    const visibleTop = Math.max(containerRect.top, toolbarBottom) + viewPadding;
+    const systemTop = pageRect.top + (position.system.top - crop.y) * scale;
+    const target = Math.max(0, container.scrollTop + systemTop - visibleTop);
+    if (Math.abs(target - container.scrollTop) < 1) return;
+    if (scrollAnimationRef.current !== null) cancelAnimationFrame(scrollAnimationRef.current);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      container.scrollTop = target;
+      return;
+    }
+
+    const start = container.scrollTop;
+    const distance = target - start;
+    const startedAt = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / SCROLL_DURATION_MS);
+      container.scrollTop = start + distance * easeInOutCubic(progress);
+      if (progress < 1) {
+        scrollAnimationRef.current = requestAnimationFrame(animate);
+      } else {
+        scrollAnimationRef.current = null;
+      }
+    };
+    scrollAnimationRef.current = requestAnimationFrame(animate);
   }, [crops, isPlaying, position, score, systemIndex]);
 
   const seekFromPage = useCallback((pageIndex: number, event: React.MouseEvent<HTMLDivElement>) => {
@@ -138,16 +197,21 @@ export function SvgPerformanceSheet() {
                     rx="2"
                   />
                 )}
-                {active.anchor?.points.map((point, index) => (
-                  <ellipse
-                    key={`${point.x}:${point.y}:${index}`}
-                    className={styles.noteHighlight}
-                    cx={point.x}
-                    cy={point.y}
-                    rx="3.8"
-                    ry="2.8"
-                  />
-                ))}
+                {active.anchor?.points.map((point, index) => {
+                  const staff = active.system.staves?.[point.staff - 1];
+                  const spacing = staff ? (staff.bottom - staff.top) / 4 : 5;
+                  return (
+                    <ellipse
+                      key={`${point.x}:${point.y}:${index}`}
+                      className={styles.noteHighlight}
+                      cx={point.x}
+                      cy={point.y}
+                      rx={Math.max(3.8, spacing * 0.76)}
+                      ry={Math.max(2.8, spacing * 0.56)}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  );
+                })}
               </svg>
             )}
           </div>

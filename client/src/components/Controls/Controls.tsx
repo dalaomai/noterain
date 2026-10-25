@@ -52,6 +52,11 @@ interface ControlsProps {
 
 const FEEDBACK_OPTIONS = ['followPitchFeedback', 'followTimingFeedback', 'followVelocityFeedback'] as const;
 
+function normalizeSimplifiedDensity(value: number) {
+  if (value > 10) return Math.max(1, Math.min(10, Math.round(value / 10)));
+  return Math.max(1, Math.min(10, value));
+}
+
 export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, onRetryAudio }: ControlsProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const importMenuRef = useRef<HTMLDivElement>(null);
@@ -114,6 +119,9 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
   } = useMidiInput();
 
   const { settings, updateSettings } = useMidiStore();
+  const [densityDraft, setDensityDraft] = useState(
+    normalizeSimplifiedDensity(settings.simplifiedScoreDensity),
+  );
   const keepScreenAwake = settings.keepScreenAwake ?? true;
   const screenWakeLock = useScreenWakeLock(keepScreenAwake);
 
@@ -126,6 +134,14 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
     fullscreen.isFullscreen,
     isExpanded || isHistoryOpen || isLinkImportOpen,
   );
+
+  useEffect(() => {
+    const normalized = normalizeSimplifiedDensity(settings.simplifiedScoreDensity);
+    setDensityDraft(normalized);
+    if (normalized !== settings.simplifiedScoreDensity) {
+      updateSettings({ simplifiedScoreDensity: normalized });
+    }
+  }, [settings.simplifiedScoreDensity, updateSettings]);
 
   // Auto-collapse when playback starts
   useEffect(() => {
@@ -512,7 +528,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
             </button>
           </div>
           {/* Render mode toggle */}
-          {currentFile?.sourceFormat !== 'svg-midi' && <div className={styles.gridItem}>
+          <div className={styles.gridItem}>
             <button
               className={`${styles.button} ${styles.viewButton} ${!settings.showSheetMusic ? styles.active : ''}`}
               onClick={() => updateSettings({ showSheetMusic: false, showFallingNotes: true })}
@@ -525,9 +541,9 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
             >
               {t('sheetMusic')}
             </button>
-          </div>}
+          </div>
 
-          {currentFile?.sourceFormat === 'musicxml' &&
+          {(currentFile?.sourceFormat === 'musicxml' || currentFile?.sourceFormat === 'svg-midi') &&
             settings.showSheetMusic && (
               <div className={styles.gridItem}>
                 <label className={styles.label}>{t('scoreMode')}</label>
@@ -548,42 +564,64 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
               </div>
             )}
 
-          {currentFile && currentFile.sourceFormat !== 'svg-midi' && settings.showSheetMusic && (
+          {currentFile && settings.showSheetMusic &&
+            (currentFile.sourceFormat === 'midi' || !settings.showOriginalMusicXml) && (
+            <>
+              <div className={styles.gridItem}>
+                <label className={styles.label}>{t('simplifiedScoreLayout')}</label>
+                <button
+                  className={`${styles.button} ${settings.simplifiedScoreLayout === 'equal' ? styles.active : ''}`}
+                  onClick={() => updateSettings({ simplifiedScoreLayout: 'equal' })}
+                >
+                  {t('simplifiedScoreLayoutEqual')}
+                </button>
+                <button
+                  className={`${styles.button} ${settings.simplifiedScoreLayout === 'smart' ? styles.active : ''}`}
+                  onClick={() => updateSettings({ simplifiedScoreLayout: 'smart' })}
+                >
+                  {t('simplifiedScoreLayoutSmart')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {currentFile && settings.showSheetMusic &&
+            !(currentFile.sourceFormat === 'svg-midi' && settings.showOriginalMusicXml) && (
             <div className={styles.gridItem}>
               <label className={styles.label}>{t('scoreDensity')}</label>
-              <select
-                className={styles.select}
-                value={settings.scoreDensity}
+              <input
+                className={styles.densitySlider}
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={densityDraft}
+                aria-label={t('scoreDensity')}
+                aria-valuetext={String(densityDraft)}
                 onChange={(event) =>
+                  setDensityDraft(Number(event.target.value))
+                }
+                onPointerUp={(event) =>
                   updateSettings({
-                    scoreDensity: event.target.value as
-                      'relaxed' | 'standard' | 'compact',
+                    simplifiedScoreDensity: Number(event.currentTarget.value),
                   })
                 }
-              >
-                <option value="relaxed">{t('scoreDensityRelaxed')}</option>
-                <option value="standard">{t('scoreDensityStandard')}</option>
-                <option value="compact">{t('scoreDensityCompact')}</option>
-              </select>
-              {currentFile.sourceFormat === 'musicxml' &&
-                settings.showOriginalMusicXml && (
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={settings.expandMusicXmlRepeats}
-                      onChange={() =>
-                        updateSettings({
-                          expandMusicXmlRepeats: !settings.expandMusicXmlRepeats,
-                        })
-                      }
-                    />
-                    {t('expandRepeats')}
-                  </label>
-                )}
+                onKeyUp={(event) =>
+                  updateSettings({
+                    simplifiedScoreDensity: Number(event.currentTarget.value),
+                  })
+                }
+                onBlur={(event) =>
+                  updateSettings({
+                    simplifiedScoreDensity: Number(event.currentTarget.value),
+                  })
+                }
+              />
+              <output className={styles.densityValue}>{densityDraft}</output>
             </div>
           )}
 
-          {(settings.showSheetMusic || currentFile?.sourceFormat === 'svg-midi') && (
+          {settings.showSheetMusic && (
             <div className={styles.gridItem}>
               <label className={styles.checkboxLabel}>
                 <input
@@ -648,7 +686,22 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
             <label className={styles.checkboxLabel}>
               <input
                 type="checkbox"
+                checked={settings.showPianoKeyboard}
+                onChange={() =>
+                  updateSettings({
+                    showPianoKeyboard: !settings.showPianoKeyboard,
+                  })
+                }
+              />
+              {t('showPianoKeyboard')}
+            </label>
+          </div>
+          <div className={styles.gridItem}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
                 checked={settings.pinKeyboardExpanded}
+                disabled={!settings.showPianoKeyboard}
                 onChange={() =>
                   updateSettings({
                     pinKeyboardExpanded: !settings.pinKeyboardExpanded,
@@ -665,6 +718,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
               <input
                 type="checkbox"
                 checked={settings.fitKeyboardToSong}
+                disabled={!settings.showPianoKeyboard}
                 onChange={() =>
                   updateSettings({
                     fitKeyboardToSong: !settings.fitKeyboardToSong,

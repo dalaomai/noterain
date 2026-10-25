@@ -8,7 +8,7 @@ export interface MusicXmlWorkerRequest {
     musicXmlCompressed?: ArrayBuffer;
   };
   pageWidth: number;
-  density: ScoreDensity;
+  density: ScoreDensity | number;
   expandRepeats: boolean;
   breaks?: 'auto' | 'encoded';
 }

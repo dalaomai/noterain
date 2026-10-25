@@ -35,29 +35,23 @@ async function render(request: MusicXmlWorkerRequest): Promise<MusicXmlWorkerRes
   post({ id: request.id, type: 'progress', stage: 'loadingEngine', progress: 1 });
 
   try {
+    const densityValue = typeof request.density === 'number'
+      ? request.density
+      : request.density === 'relaxed'
+        ? 1
+        : request.density === 'compact'
+          ? 10
+          : 5;
+    const densityProgress = (Math.max(1, Math.min(10, densityValue)) - 1) / 9;
+    const interpolate = (loose: number, compact: number) =>
+      loose + (compact - loose) * densityProgress;
     const densityOptions = {
-      relaxed: {
-        lyricWordSpace: 2.2,
-        measureMinWidth: 21,
-        spacingLinear: 0.4,
-        spacingNonLinear: 0.68,
-        spacingSystem: 7,
-      },
-      standard: {
-        lyricWordSpace: 2.0,
-        measureMinWidth: 20,
-        spacingLinear: 0.36,
-        spacingNonLinear: 0.65,
-        spacingSystem: 6,
-      },
-      compact: {
-        lyricWordSpace: 1.5,
-        measureMinWidth: 16,
-        spacingLinear: 0.28,
-        spacingNonLinear: 0.6,
-        spacingSystem: 5,
-      },
-    }[request.density ?? 'standard'];
+      lyricWordSpace: interpolate(2.2, 1.2),
+      measureMinWidth: interpolate(21, 11),
+      spacingLinear: interpolate(0.4, 0.2),
+      spacingNonLinear: interpolate(0.68, 0.52),
+      spacingSystem: interpolate(7, 3.5),
+    };
 
     post({ id: request.id, type: 'progress', stage: 'parsingScore', progress: 0.2 });
     toolkit.setOptions({
@@ -70,7 +64,7 @@ async function render(request: MusicXmlWorkerRequest): Promise<MusicXmlWorkerRes
       lyricTopMinMargin: 2.25,
       lyricWordSpace: densityOptions.lyricWordSpace,
       measureMinWidth: densityOptions.measureMinWidth,
-      pageWidth: getScorePageWidth(request.pageWidth, request.density ?? 'standard'),
+      pageWidth: getScorePageWidth(request.pageWidth),
       scale: 40,
       spacingLinear: densityOptions.spacingLinear,
       spacingNonLinear: densityOptions.spacingNonLinear,

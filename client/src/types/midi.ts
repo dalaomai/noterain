@@ -62,6 +62,8 @@ export interface MidiFile {
   tempos: TempoChange[];
   /** Time signature */
   timeSignature: TimeSignature;
+  /** Time-signature changes positioned in quarter-note beats. */
+  timeSignatureChanges?: Array<TimeSignature & { beat: number; time: number }>;
   /** Key signature */
   keySignature: KeySignature;
   /** All tracks */
@@ -187,6 +189,9 @@ export type NoteColorMode = 'track' | 'pitch';
 /** MusicXML notation density */
 export type ScoreDensity = 'relaxed' | 'standard' | 'compact';
 
+/** Measure width strategy for the generated simplified score. */
+export type SimplifiedScoreLayout = 'equal' | 'smart';
+
 /** App settings */
 export interface Settings {
   /** Master volume (0-1) */
@@ -205,6 +210,10 @@ export interface Settings {
   showOriginalMusicXml: boolean;
   /** MusicXML engraving density */
   scoreDensity: ScoreDensity;
+  /** Continuous generated-score density from 1 (loose) to 10 (compact) */
+  simplifiedScoreDensity: number;
+  /** Measure width strategy for the generated simplified score */
+  simplifiedScoreLayout: SimplifiedScoreLayout;
   /** Expand repeats and endings into linear playback order */
   expandMusicXmlRepeats: boolean;
   /** Show falling notes view */
@@ -221,6 +230,8 @@ export interface Settings {
   fitKeyboardToSong: boolean;
   /** Keep the piano keyboard expanded without hovering */
   pinKeyboardExpanded: boolean;
+  /** Show the on-screen piano keyboard */
+  showPianoKeyboard: boolean;
   /** Keep the screen on while the practice page is visible */
   keepScreenAwake: boolean;
   /** Show a draggable playback remote above the score */
@@ -247,6 +258,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showPlaybackCursor: true,
   showOriginalMusicXml: true,
   scoreDensity: 'standard',
+  simplifiedScoreDensity: 5,
+  simplifiedScoreLayout: 'smart',
   expandMusicXmlRepeats: false,
   showFallingNotes: true,
   metronomeEnabled: false,
@@ -255,6 +268,7 @@ export const DEFAULT_SETTINGS: Settings = {
   noteColorMode: 'track',
   fitKeyboardToSong: false,
   pinKeyboardExpanded: false,
+  showPianoKeyboard: true,
   keepScreenAwake: true,
   showFloatingRemote: true,
   playMidiInputAudio: true,

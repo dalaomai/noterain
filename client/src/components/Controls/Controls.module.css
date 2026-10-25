@@ -510,6 +510,20 @@
   cursor: pointer;
 }
 
+.densitySlider {
+  flex: 1;
+  min-width: 100px;
+  cursor: pointer;
+}
+
+.densityValue {
+  width: 32px;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .progressBar {
   flex: 1;
   min-width: 80px;

@@ -79,3 +79,27 @@ test('does not retain a note marker from the previous measure', () => {
   assert.equal(position.anchor, undefined);
   assert.equal(position.x, measureTwo.left);
 });
+
+test('uses MIDI time-signature changes for SVG measure boundaries', () => {
+  const lines = [10, 15, 20, 25, 30, 50, 55, 60, 65, 70]
+    .map((y) => `M5 ${y}H110`)
+    .join('');
+  const page = `<svg width="115" height="80"><path class="StaffLines" d="${lines}"/><path class="BarLine" d="M5 10v60M40 10v60M75 10v60M110 10v60"/></svg>`;
+  const file = {
+    timeSignature: { numerator: 4, denominator: 4 },
+    timeSignatureChanges: [
+      { numerator: 4, denominator: 4, beat: 0, time: 0 },
+      { numerator: 3, denominator: 4, beat: 4, time: 2 },
+      { numerator: 4, denominator: 4, beat: 7, time: 3.5 },
+    ],
+    tempos: [{ time: 0, bpm: 120 }],
+    tracks: [],
+  };
+
+  const score = buildSvgPerformanceScore(file, [page]);
+
+  assert.deepEqual(
+    score.systems[0].measures.map(({ startTime, endTime }) => [startTime, endTime]),
+    [[0, 2], [2, 3.5], [3.5, 5.5]],
+  );
+});

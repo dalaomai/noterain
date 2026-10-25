@@ -117,10 +117,12 @@ function App() {
 
       <Controls isLoadingFullVelocity={isLoadingFullVelocity} audioError={audioError} isRetryingAudio={isRetryingAudio} onRetryAudio={retryAudio} />
 
-      <div className={`main-content${settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
+      <div className={`main-content${settings.showPianoKeyboard ? '' : ' keyboard-hidden'}${settings.showPianoKeyboard && settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
         {settings.showNotesOverlay && <NotesOverlay />}
 
-        {currentFile?.sourceFormat === 'svg-midi' && (
+        {currentFile?.sourceFormat === 'svg-midi' &&
+          settings.showSheetMusic &&
+          settings.showOriginalMusicXml && (
           <SvgPerformanceSheet key={currentFile.id} />
         )}
 
@@ -130,14 +132,13 @@ function App() {
           <MusicXmlSheet key={currentFile.id} />
         )}
 
-        {currentFile && currentFile.sourceFormat !== 'svg-midi' &&
-          settings.showSheetMusic &&
-          (currentFile.sourceFormat !== 'musicxml' ||
+        {currentFile && settings.showSheetMusic &&
+          (currentFile.sourceFormat === 'midi' ||
             !settings.showOriginalMusicXml) && (
           <SheetMusic key={currentFile.id} />
         )}
 
-        {currentFile && currentFile.sourceFormat !== 'svg-midi' && settings.showFallingNotes && !settings.showSheetMusic && (
+        {currentFile && settings.showFallingNotes && !settings.showSheetMusic && (
           <FallingNotes key={currentFile.id} lookahead={3} minNote={minNote} maxNote={maxNote} />
         )}
 
@@ -147,12 +148,14 @@ function App() {
           </div>
         )}
 
-        <PianoKeyboard
-          onNoteOn={handleNoteOn}
-          onNoteOff={handleNoteOff}
-          minNote={minNote}
-          maxNote={maxNote}
-        />
+        {settings.showPianoKeyboard && (
+          <PianoKeyboard
+            onNoteOn={handleNoteOn}
+            onNoteOff={handleNoteOff}
+            minNote={minNote}
+            maxNote={maxNote}
+          />
+        )}
         {currentFile && <FollowFeedback minNote={minNote} maxNote={maxNote} />}
         <PwaStatus />
       </div>

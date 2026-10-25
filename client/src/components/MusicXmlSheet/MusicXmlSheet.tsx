@@ -66,7 +66,9 @@ export function MusicXmlSheet() {
   const currentFile = useMidiStore((state) => state.getCurrentFile());
   const isPlaying = useMidiStore((state) => state.playback.isPlaying);
   const waitMode = useMidiStore((state) => state.playback.waitMode);
-  const scoreDensity = useMidiStore((state) => state.settings.scoreDensity);
+  const scoreDensity = useMidiStore(
+    (state) => state.settings.simplifiedScoreDensity,
+  );
   const expandRepeats = useMidiStore(
     (state) => state.settings.expandMusicXmlRepeats,
   );
@@ -419,7 +421,7 @@ export function MusicXmlSheet() {
         }
       }
 
-      if (isPlaying && eventIndex >= 0 && (eventChanged || toolbarChanged)) {
+      if (isPlaying && eventIndex >= 0) {
         const frame = playbackFrames[eventIndex];
         const focusId =
           cursor?.focusId ?? frame.activeIds[0] ?? frame.measureId;
@@ -428,14 +430,12 @@ export function MusicXmlSheet() {
           : null;
         if (focusElement) {
           const system = focusElement.closest('.system') ?? focusElement;
-          // Short viewports need room below the current system for reading ahead.
-          scrollScoreSystemIntoView(
-            container,
-            focusElement,
-            (system !== followedSystem || toolbarChanged) &&
-              container.clientHeight <= 500,
-          );
-          followedSystem = system;
+          if (system !== followedSystem || toolbarChanged) {
+            // Align every newly active system immediately so the next row stays
+            // available for reading ahead, even when this row was partly visible.
+            scrollScoreSystemIntoView(container, focusElement, true);
+            followedSystem = system;
+          }
         }
       }
 

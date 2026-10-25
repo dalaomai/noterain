@@ -29,10 +29,40 @@ function groupNotesByOnset(notes: MidiNote[]): MidiNote[][] {
   return groups;
 }
 
+function buildMeasureBeats(file: MidiFile, count: number): Array<{ start: number; end: number }> {
+  const changes = file.timeSignatureChanges?.length
+    ? file.timeSignatureChanges
+    : [{ ...file.timeSignature, beat: 0, time: 0 }];
+  const measures: Array<{ start: number; end: number }> = [];
+  let beat = 0;
+  let changeIndex = 0;
+  while (measures.length < count) {
+    while (
+      changeIndex + 1 < changes.length
+      && changes[changeIndex + 1].beat <= beat + 0.0001
+    ) changeIndex++;
+    const signature = changes[changeIndex];
+    const length = signature.numerator * 4 / signature.denominator;
+    const nextChange = changes[changeIndex + 1]?.beat;
+    const end = nextChange !== undefined && nextChange < beat + length - 0.0001
+      ? nextChange
+      : beat + length;
+    measures.push({ start: beat, end });
+    beat = end;
+  }
+  return measures;
+}
+
 export function buildSvgPerformanceScore(file: MidiFile, pages: string[]): SvgPerformanceScore {
   const models = pages.map(parseSvgPage);
-  const measureBeats = file.timeSignature.numerator * 4 / file.timeSignature.denominator;
   const notes = file.tracks.flatMap((track) => track.notes);
+  const totalMeasureCount = models.reduce((total, page) =>
+    total + page.systems.reduce(
+      (pageTotal, system) => pageTotal + Math.max(0, system.barlines.length - 1),
+      0,
+    ),
+  0);
+  const measureBeats = buildMeasureBeats(file, totalMeasureCount);
   let measureIndex = 0;
   const systems: SvgPerformanceScore['systems'] = [];
 
@@ -43,8 +73,9 @@ export function buildSvgPerformanceScore(file: MidiFile, pages: string[]): SvgPe
       const systemStartMeasure = measureIndex;
       const measureCount = Math.max(0, system.barlines.length - 1);
       for (let localMeasure = 0; localMeasure < measureCount; localMeasure++, measureIndex++) {
-        const startTime = secondsAtBeat(file, measureIndex * measureBeats);
-        const endTime = secondsAtBeat(file, (measureIndex + 1) * measureBeats);
+        const measure = measureBeats[measureIndex];
+        const startTime = secondsAtBeat(file, measure.start);
+        const endTime = secondsAtBeat(file, measure.end);
         systemMeasures.push({
           startTime,
           endTime,
@@ -93,8 +124,8 @@ export function buildSvgPerformanceScore(file: MidiFile, pages: string[]): SvgPe
           });
         });
       }
-      const startTime = secondsAtBeat(file, systemStartMeasure * measureBeats);
-      const endTime = secondsAtBeat(file, measureIndex * measureBeats);
+      const startTime = secondsAtBeat(file, measureBeats[systemStartMeasure].start);
+      const endTime = secondsAtBeat(file, measureBeats[measureIndex - 1].end);
       systems.push({
         page: pageIndex,
         top: system.top,

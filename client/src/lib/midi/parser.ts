@@ -31,6 +31,11 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
   const tempoMap = buildMidiTempoMap(parsed, ticksPerBeat);
   const tempos = tempoMap.map(({ time, bpm }) => ({ time, bpm }));
   const timeSignature = extractTimeSignature(parsed);
+  const timeSignatureChanges = extractTimeSignatureChanges(
+    parsed,
+    ticksPerBeat,
+    tempoMap,
+  );
   const keySignature = extractKeySignature(parsed);
   const tracks = extractTracks(parsed, tempoMap);
   const duration = calculateDuration(tracks);
@@ -49,6 +54,7 @@ export function parseMidiFile(data: ArrayBuffer, fileName: string): MidiFile {
     ticksPerBeat,
     tempos,
     timeSignature,
+    timeSignatureChanges,
     keySignature,
     tracks,
     lastModified: Date.now(),
@@ -105,6 +111,34 @@ function extractTimeSignature(midi: MidiData): TimeSignature {
     }
   }
   return { numerator: 4, denominator: 4 }; // Default 4/4
+}
+
+function extractTimeSignatureChanges(
+  midi: MidiData,
+  ticksPerBeat: number,
+  tempoMap: MidiTempoPoint[],
+): Array<TimeSignature & { beat: number; time: number }> {
+  const changes: Array<TimeSignature & { beat: number; time: number }> = [];
+  for (const track of midi.tracks) {
+    let tick = 0;
+    for (const event of track) {
+      tick += event.deltaTime;
+      if (event.type !== 'timeSignature') continue;
+      changes.push({
+        numerator: event.numerator,
+        denominator: event.denominator,
+        beat: tick / ticksPerBeat,
+        time: midiTicksToSeconds(tick, tempoMap),
+      });
+    }
+  }
+  changes.sort((left, right) => left.beat - right.beat);
+  return changes.filter((change, index) =>
+    index === 0
+    || change.beat !== changes[index - 1].beat
+    || change.numerator !== changes[index - 1].numerator
+    || change.denominator !== changes[index - 1].denominator,
+  );
 }
 
 /** Extract key signature from MIDI data */

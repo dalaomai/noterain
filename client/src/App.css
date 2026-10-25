@@ -43,6 +43,11 @@
   --piano-keyboard-collapsed-height: var(--piano-keyboard-expanded-height);
 }
 
+.main-content.keyboard-hidden {
+  --piano-keyboard-collapsed-height: 0px;
+  --piano-keyboard-expanded-height: 0px;
+}
+
 .empty-state {
   position: absolute;
   inset: 0;

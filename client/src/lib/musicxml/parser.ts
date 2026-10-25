@@ -132,7 +132,7 @@ export async function parseMusicXmlFile(file: File): Promise<MidiFile> {
 export async function renderMusicXmlPages(
   source: Pick<MidiFile, 'musicXml' | 'musicXmlCompressed'> & object,
   pageWidth: number,
-  density: ScoreDensity,
+  density: ScoreDensity | number,
   expandRepeats: boolean,
   onProgress?: (stage: MusicXmlRenderStage, progress: number) => void,
   signal?: AbortSignal,

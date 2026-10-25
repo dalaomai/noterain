@@ -17,9 +17,9 @@ import { followNoteKey } from '../../lib/followMode';
 import {
   BARLINE_NOTE_GAP,
   getScoreTimeX,
+  getSimplifiedDensity,
   getUniformScoreSpacing,
   layoutScoreMeasures,
-  SCORE_DENSITIES,
 } from '../../lib/scoreLayout';
 import styles from './SheetMusic.module.css';
 
@@ -403,6 +403,8 @@ interface MeasurePosition {
   height: number;
   noteStartX: number;
   noteEndX: number;
+  playbackStartX: number;
+  playbackEndX: number;
 }
 
 function getScoreColumns(formatter: Formatter, voices: Voice[], beats: number) {
@@ -702,6 +704,7 @@ export function SheetMusic({
     snapPoints: number[];
   }>({ measures: [], snapPoints: [] });
   const [viewportWidth, setViewportWidth] = useState(1200);
+  const [browserZoom, setBrowserZoom] = useState(1);
 
   // Store note positions for highlighting
   const notePositionsRef = useRef<NotePosition[]>([]);
@@ -724,7 +727,12 @@ export function SheetMusic({
   const files = useMidiStore((state) => state.files);
   const currentFile = files.find((f) => f.id === currentFileId) || null;
   const theme = useMidiStore((state) => state.settings.theme);
-  const scoreDensity = useMidiStore((state) => state.settings.scoreDensity);
+  const simplifiedScoreDensity = useMidiStore(
+    (state) => state.settings.simplifiedScoreDensity,
+  );
+  const simplifiedScoreLayout = useMidiStore(
+    (state) => state.settings.simplifiedScoreLayout,
+  );
   const seek = useMidiStore((state) => state.seek);
   const loopEnabled = useMidiStore((state) => state.playback.loopEnabled);
   const loopStartMeasure = useMidiStore(
@@ -740,18 +748,41 @@ export function SheetMusic({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    let resizeTimer: number | undefined;
 
-    const updateWidth = () => {
-      const nextWidth = Math.max(1, Math.floor(container.clientWidth) - 32);
+    const measureWidth = () => {
+      const visibleWidth = window.visualViewport?.width ?? window.innerWidth;
+      const nextWidth = Math.max(
+        1,
+        Math.floor(Math.min(container.clientWidth, visibleWidth)) - 32,
+      );
       setViewportWidth((current) =>
         Math.abs(current - nextWidth) >= 2 ? nextWidth : current,
       );
+      const nextZoom = Math.max(
+        0.5,
+        Math.min(3, window.outerWidth / Math.max(1, window.innerWidth)),
+      );
+      setBrowserZoom((current) =>
+        Math.abs(current - nextZoom) >= 0.02 ? nextZoom : current,
+      );
+    };
+    const scheduleWidthUpdate = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(measureWidth, 400);
     };
 
-    const observer = new ResizeObserver(updateWidth);
+    const observer = new ResizeObserver(scheduleWidthUpdate);
     observer.observe(container);
-    updateWidth();
-    return () => observer.disconnect();
+    window.addEventListener('resize', scheduleWidthUpdate);
+    window.visualViewport?.addEventListener('resize', scheduleWidthUpdate);
+    measureWidth();
+    return () => {
+      window.clearTimeout(resizeTimer);
+      observer.disconnect();
+      window.removeEventListener('resize', scheduleWidthUpdate);
+      window.visualViewport?.removeEventListener('resize', scheduleWidthUpdate);
+    };
   }, []);
 
   // Render sheet music
@@ -831,7 +862,7 @@ export function SheetMusic({
     const measureCount = trackMeasures[0]?.measures.length || 0;
 
     // Layout constants
-    const density = SCORE_DENSITIES[scoreDensity];
+    const density = getSimplifiedDensity(simplifiedScoreDensity);
     const leftMargin = 20;
     const singleStaveHeight = density.staveHeight;
     const trackSpacing = density.systemGap;
@@ -907,7 +938,9 @@ export function SheetMusic({
       clefKeyTimeWidth,
       leftMargin,
       { ...linePadding, boundary: maxModifierLeft + BARLINE_NOTE_GAP },
-      scoreDensity,
+      simplifiedScoreDensity,
+      simplifiedScoreLayout,
+      browserZoom,
     );
     const lines = layoutLines.map((line) => line.measureIndices);
 
@@ -959,6 +992,9 @@ export function SheetMusic({
 
         const line = layoutLines[lineIndex];
         const staveWidth = line.widths[posInLine];
+        const timeStartX = line.timeStartX + line.timeWidths
+          .slice(0, posInLine)
+          .reduce((sum, timeWidth) => sum + timeWidth, 0);
 
         // Store measure position for click detection
         const measurePosition = {
@@ -967,8 +1003,10 @@ export function SheetMusic({
           y: baseY,
           width: staveWidth,
           height: systemHeight,
-          noteStartX: line.timeStartX + posInLine * line.timeWidth,
-          noteEndX: line.timeStartX + (posInLine + 1) * line.timeWidth,
+          noteStartX: timeStartX,
+          noteEndX: timeStartX + line.noteWidths[posInLine],
+          playbackStartX: timeStartX,
+          playbackEndX: timeStartX + line.timeWidths[posInLine],
         };
         measurePositions.push(measurePosition);
 
@@ -1340,6 +1378,8 @@ export function SheetMusic({
       height: pos.height * scale,
       noteStartX: pos.noteStartX * scale,
       noteEndX: pos.noteEndX * scale,
+      playbackStartX: pos.playbackStartX * scale,
+      playbackEndX: pos.playbackEndX * scale,
     }));
     setRenderedLayout({
       measures: measurePositionsRef.current,
@@ -1356,7 +1396,7 @@ export function SheetMusic({
     container.dataset.trackCount = String(enabledTracks.length);
     container.dataset.singleStaveHeight = String(singleStaveHeight * scale);
     container.dataset.lineCount = String(lines.length);
-  }, [currentFile, beatsPerMeasureProp, theme, viewportWidth, scoreDensity]);
+  }, [currentFile, beatsPerMeasureProp, theme, viewportWidth, simplifiedScoreDensity, simplifiedScoreLayout, browserZoom]);
 
   // Scroll-to-seek: convert scroll position to playback time (only when paused)
   const handleScroll = useCallback(() => {
@@ -1511,13 +1551,13 @@ export function SheetMusic({
               (m) => m.measureIndex === currentMeasure,
             );
             if (measurePos) {
-              // Notes and cursor share one linear time axis, excluding headers.
+              // Keep notes compact, but let playback traverse the full measure.
               const xPos = getScoreTimeX(
                 currentTime,
                 currentMeasure * secondsPerMeasure,
                 secondsPerMeasure,
-                measurePos.noteStartX,
-                measurePos.noteEndX,
+                measurePos.playbackStartX,
+                measurePos.playbackEndX,
               );
               progressLine.style.left = `${xPos}px`;
               progressLine.style.top = `${measurePos.y}px`;
@@ -1559,8 +1599,8 @@ export function SheetMusic({
                 currentTime,
                 currentMeasure * secondsPerMeasure,
                 secondsPerMeasure,
-                measure.noteStartX,
-                measure.noteEndX,
+                measure.playbackStartX,
+                measure.playbackEndX,
               );
               if (
                 cursorX < container.scrollLeft + 24 ||

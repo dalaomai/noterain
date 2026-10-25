@@ -6,25 +6,24 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* One Dark (Atom) */
+/* Low-glare graphite theme for long practice sessions. */
 [data-theme='mocha'] {
   color-scheme: dark;
-  /* One Dark palette */
-  --od-bg: #282c34;
-  --od-bg-light: #2c323c;
-  --od-bg-lighter: #3e4451;
-  --od-bg-dark: #21252b;
-  --od-bg-darker: #1e2127;
-  --od-fg: #abb2bf;
-  --od-fg-muted: #5c6370;
-  --od-fg-subtle: #4b5263;
-  --od-red: #e06c75;
-  --od-orange: #d19a66;
-  --od-yellow: #e5c07b;
-  --od-green: #98c379;
-  --od-cyan: #56b6c2;
-  --od-blue: #61afef;
-  --od-purple: #c678dd;
+  --od-bg: #262724;
+  --od-bg-light: #2c2d29;
+  --od-bg-lighter: #3d3f39;
+  --od-bg-dark: #22231f;
+  --od-bg-darker: #1d1e1b;
+  --od-fg: #d3d0c5;
+  --od-fg-muted: #777a71;
+  --od-fg-subtle: #555850;
+  --od-red: #dc8588;
+  --od-orange: #d2a06c;
+  --od-yellow: #d8bd78;
+  --od-green: #9ab882;
+  --od-cyan: #75afb0;
+  --od-blue: #82a9c7;
+  --od-purple: #b39abb;
 
   /* Semantic colors */
   --bg-base: var(--od-bg);
@@ -32,7 +31,7 @@
   --bg-elevated: var(--od-bg-dark);
   --bg-overlay: var(--od-bg-lighter);
   --text-primary: var(--od-fg);
-  --text-secondary: #8b95a7;
+  --text-secondary: #aaa79d;
   --text-muted: var(--od-fg-muted);
   --border-color: var(--od-bg-lighter);
   --accent: var(--od-orange);
@@ -44,17 +43,17 @@
   --ctp-red: var(--od-red);
   --ctp-blue: var(--od-blue);
   --ctp-peach: var(--od-orange);
-  --ctp-maroon: #be5046;
+  --ctp-maroon: #bd7779;
   --ctp-sapphire: var(--od-cyan);
   --ctp-crust: var(--od-bg-darker);
 
   /* Sheet music colors (matching NotesOverlay) */
-  --sheet-note-color: #cdd6f4;
-  --sheet-stave-color: #6c7086;
-  --score-paper: #21252b;
-  --score-ink: #cdd6f4;
-  --score-ink-muted: #8b95a7;
-  --score-page-shadow: rgb(0 0 0 / 42%);
+  --sheet-note-color: #d0cdc2;
+  --sheet-stave-color: #85887f;
+  --score-paper: #252622;
+  --score-ink: #d0cdc2;
+  --score-ink-muted: #9a998f;
+  --score-page-shadow: rgb(0 0 0 / 30%);
 }
 
 /* Catppuccin Latte (Light) */
@@ -104,10 +103,10 @@
   /* Sheet music colors (matching NotesOverlay) */
   --sheet-note-color: #4c4f69;
   --sheet-stave-color: #9ca0b0;
-  --score-paper: #fff;
-  --score-ink: #303446;
-  --score-ink-muted: #6c6f85;
-  --score-page-shadow: rgb(76 79 105 / 20%);
+  --score-paper: #f7f4ed;
+  --score-ink: #41443f;
+  --score-ink-muted: #6f726b;
+  --score-page-shadow: rgb(76 79 105 / 14%);
 }
 
 html,

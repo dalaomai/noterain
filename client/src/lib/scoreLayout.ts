@@ -1,34 +1,50 @@
-import type { ScoreDensity } from '../types/midi';
+import type { ScoreDensity, SimplifiedScoreLayout } from '../types/midi';
 
 export const BARLINE_NOTE_GAP = 12;
 
 export const SCORE_DENSITIES = {
   relaxed: {
-    pageWidthFactor: 1.9,
-    spacing: 1.5,
+    noteSpacing: 1.35,
     staveHeight: 112,
     systemGap: 36,
+    measuresPerLine: 2,
   },
   standard: {
-    pageWidthFactor: 2.1,
-    spacing: 1.25,
+    noteSpacing: 1.15,
     staveHeight: 104,
     systemGap: 24,
+    measuresPerLine: 3,
   },
   compact: {
-    pageWidthFactor: 2.5,
-    spacing: 1,
+    noteSpacing: 1,
     staveHeight: 96,
     systemGap: 16,
+    measuresPerLine: 4,
   },
 } satisfies Record<ScoreDensity, object>;
 
-export function getScorePageWidth(viewportWidth: number, density: ScoreDensity) {
+export function getSimplifiedDensity(value: ScoreDensity | number) {
+  const numeric = typeof value === 'number'
+    ? value
+    : value === 'relaxed'
+      ? 1
+      : value === 'compact'
+        ? 10
+        : 5;
+  const progress = (Math.max(1, Math.min(10, numeric)) - 1) / 9;
+  return {
+    noteSpacing: 1.4 - progress * 1.05,
+    staveHeight: 116 - progress * 36,
+    systemGap: 40 - progress * 36,
+    measuresPerLine: 2 + Math.round(progress * 6),
+  };
+}
+
+export function getScorePageWidth(viewportWidth: number, density?: ScoreDensity) {
+  void density;
   return Math.max(
     750,
-    Math.round(
-      Math.max(320, viewportWidth) * SCORE_DENSITIES[density].pageWidthFactor,
-    ),
+    Math.round(Math.max(320, viewportWidth) * 2.1),
   );
 }
 
@@ -99,52 +115,80 @@ export function layoutScoreMeasures(
     left: 0,
     right: 0,
   },
-  density: ScoreDensity = 'standard',
+  density: ScoreDensity | number = 50,
+  layout: SimplifiedScoreLayout = 'smart',
+  browserZoom = 1,
 ) {
   // Verovio uses 180 units between staff lines in a pageWidth * 10 viewBox.
   // Match that physical staff size, including the original page's 1200px cap.
   // VexFlow's unscaled staff lines are 10px apart.
   const displayWidth = Math.min(1200, viewportWidth);
-  const scale = (1.8 * displayWidth) / getScorePageWidth(viewportWidth, density);
-  const widest = Math.max(0, ...measureWidths);
-  const timeWidth = Math.max(1, widest) * SCORE_DENSITIES[density].spacing;
-  // Dense bars remain readable at the same size as the original. Allow panning
-  // one oversized bar instead of shrinking every symbol in the entire score.
-  const width = Math.max(
-    displayWidth / scale,
-    timeWidth + headerWidth + padding.left + padding.right + margin * 2,
+  const densitySettings = getSimplifiedDensity(density);
+  const preferredScale =
+    ((1.8 * displayWidth) / getScorePageWidth(viewportWidth)) * browserZoom;
+  const requiredWidths = measureWidths.map(
+    (measureWidth) => Math.max(1, measureWidth) * densitySettings.noteSpacing,
   );
+  const scale = preferredScale;
+  const width = viewportWidth / scale;
   const available =
     width - margin * 2 - headerWidth - padding.left - padding.right;
+  const boundary = padding.boundary ?? padding.left;
   const measuresPerLine = Math.max(
     1,
-    Math.floor((available + 0.001) / timeWidth),
+    Math.round(densitySettings.measuresPerLine / Math.max(1, browserZoom)),
   );
-  const boundary = padding.boundary ?? padding.left;
   const lines: {
     measureIndices: number[];
     widths: number[];
     timeStartX: number;
     timeWidth: number;
+    timeWidths: number[];
+    noteWidths: number[];
   }[] = [];
-  for (let first = 0; first < measureWidths.length; first += measuresPerLine) {
-    const indices = Array.from(
-      { length: Math.min(measuresPerLine, measureWidths.length - first) },
-      (_, i) => first + i,
+  for (let first = 0; first < measureWidths.length;) {
+    const indices = [first];
+    let occupied = requiredWidths[first];
+    while (
+      first + indices.length < measureWidths.length
+      && indices.length < measuresPerLine
+    ) {
+      const candidate = first + indices.length;
+      const candidateWidths = [...indices, candidate].map((index) => requiredWidths[index]);
+      const needed = layout === 'equal'
+        ? Math.max(...candidateWidths) * candidateWidths.length
+        : candidateWidths.reduce((sum, value) => sum + value, 0);
+      if (needed > available * Math.max(1, browserZoom) + 0.001) break;
+      indices.push(candidate);
+      occupied += requiredWidths[candidate];
+    }
+    const equalWidth = available / indices.length;
+    const minimumSmartWidth = equalWidth * 0.5;
+    const weightedSpace = available - minimumSmartWidth * indices.length;
+    const timeWidths = layout === 'equal'
+      ? indices.map(() => equalWidth)
+      : indices.map((index) =>
+          minimumSmartWidth + requiredWidths[index] * weightedSpace / occupied,
+        );
+    const noteWidths = indices.map((index, position) =>
+      Math.min(timeWidths[position], requiredWidths[index] * 1.35),
     );
     lines.push({
       measureIndices: indices,
       timeStartX: margin + headerWidth + padding.left,
-      timeWidth,
+      timeWidth: Math.max(...timeWidths),
+      timeWidths,
+      noteWidths,
       widths: indices.map(
         (_, i) =>
-          timeWidth +
+          timeWidths[i] +
           (i === 0 ? headerWidth + padding.left - boundary : 0) +
           // The closing barline is the time-axis endpoint. Keep right-side
           // fitting clearance outside the staff, where it consumes no time.
           (i === indices.length - 1 ? boundary : 0),
       ),
     });
+    first += indices.length;
   }
   return { scale, width, lines };
 }

@@ -55,7 +55,8 @@ test('server stores recoverable sidecar metadata and supports private Blob store
   assert.match(download, /SOURCE_INCOMPLETE/);
   assert.match(download, /useCache: false/);
   assert.match(status, /prefix: `scores\/\$\{id\}\/versions\//);
-  assert.match(status, /source\?\.blob\.size === metadata\.byteSize/);
+  assert.match(status, /page\.blobs\.find\(\(blob\) => blob\.pathname === metadata\.originalBlobPath\)/);
+  assert.match(status, /source\?\.size === metadata\.byteSize/);
   assert.match(status, /useCache: false/);
   assert.match(rebuild, /endsWith\('\/metadata\.json'\)/);
   assert.match(rebuild, /SOURCE_INCOMPLETE/);

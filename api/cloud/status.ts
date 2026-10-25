@@ -32,12 +32,8 @@ export async function GET(request: Request) {
       if (!metadataResult?.stream) continue;
       const metadata = parseMetadata(await new Response(metadataResult.stream).text());
       if (metadata.format !== format) continue;
-      const source = await get(metadata.originalBlobPath, {
-        access: 'private',
-        token: blobToken(),
-        useCache: false,
-      });
-      if (source?.blob.size === metadata.byteSize) return json({ complete: true });
+      const source = page.blobs.find((blob) => blob.pathname === metadata.originalBlobPath);
+      if (source?.size === metadata.byteSize) return json({ complete: true });
     }
     return json({ complete: false }, { status: 202 });
   } catch {

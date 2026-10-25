@@ -169,6 +169,12 @@ export async function uploadScoreSilently(file: File, score: MidiFile) {
       contentType: 'application/octet-stream',
       multipart: file.size > 5 * 1024 * 1024,
     });
+    const finalize = await fetch(`${apiBase}/api/cloud/finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pathname: temporaryPath, metadata }),
+    });
+    if (!finalize.ok) throw new Error(`CLOUD_FINALIZE_FAILED_${finalize.status}`);
     for (let attempt = 0; attempt < 6; attempt++) {
       if (await isCloudScoreComplete(hash, format)) return true;
       await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));

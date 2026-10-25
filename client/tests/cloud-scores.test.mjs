@@ -38,17 +38,19 @@ test('cloud file classification inspects content for every supported format', as
 
 test('server stores recoverable sidecar metadata and supports private Blob stores', async () => {
   const upload = await readFile(new URL('../../api/cloud/upload.ts', import.meta.url), 'utf8');
+  const finalize = await readFile(new URL('../../api/cloud/finalize.ts', import.meta.url), 'utf8');
   const download = await readFile(new URL('../../api/cloud/download.ts', import.meta.url), 'utf8');
   const rebuild = await readFile(new URL('../../api/cloud/admin/rebuild-index.ts', import.meta.url), 'utf8');
   const status = await readFile(new URL('../../api/cloud/status.ts', import.meta.url), 'utf8');
 
-  assert.match(upload, /metadata\.json/);
-  assert.match(upload, /access: 'private'/);
-  assert.match(upload, /validateSourceBytes/);
+  assert.doesNotMatch(upload, /onUploadCompleted/);
   assert.match(upload, /uploads\/\$\{metadata\.sha256\}/);
-  assert.match(upload, /rename\(blob\.pathname, publishedPath/);
-  assert.match(upload, /versions\/\$\{uploadId\}/);
-  assert.match(upload, /del\(blob\.pathname/);
+  assert.match(finalize, /access: 'private'/);
+  assert.match(finalize, /metadata\.json/);
+  assert.match(finalize, /validateSourceBytes/);
+  assert.match(finalize, /rename\(/);
+  assert.match(finalize, /versions\/\$\{uploadId\}/);
+  assert.match(finalize, /del\(pathname/);
   assert.match(download, /get\(pathname/);
   assert.match(download, /SOURCE_INCOMPLETE/);
   assert.match(download, /useCache: false/);

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   Play,
   Pause,
@@ -64,6 +64,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
   const importMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoCloseTimerRef = useRef<number | null>(null);
+  const cloudCapabilityRequestRef = useRef(0);
   const [isExpanded, setIsExpanded] = useState(
     () =>
       window.matchMedia(
@@ -140,15 +141,31 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
     isExpanded || isHistoryOpen || isLinkImportOpen || isCloudImportOpen,
   );
 
-  useEffect(() => {
-    void getCloudCapabilities()
-      .then((capabilities) => {
+  const refreshCloudAvailability = useCallback(async (force = false) => {
+    const request = ++cloudCapabilityRequestRef.current;
+    try {
+      const capabilities = await getCloudCapabilities(force);
+      if (request === cloudCapabilityRequestRef.current) {
         setCloudSearchAvailable(capabilities.search);
-      })
-      .catch(() => {
-        setCloudSearchAvailable(false);
-      });
+      }
+      return capabilities.search;
+    } catch {
+      if (request === cloudCapabilityRequestRef.current) setCloudSearchAvailable(false);
+      return false;
+    }
   }, []);
+
+  useEffect(() => {
+    let retryTimer: number | undefined;
+    void refreshCloudAvailability().then((available) => {
+      if (!available) {
+        retryTimer = window.setTimeout(() => {
+          void refreshCloudAvailability(true);
+        }, 2_000);
+      }
+    });
+    return () => window.clearTimeout(retryTimer);
+  }, [refreshCloudAvailability]);
 
   useEffect(() => {
     const normalized = normalizeSimplifiedDensity(settings.simplifiedScoreDensity);
@@ -278,7 +295,13 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
                 className={`${styles.button} ${styles.importButton} ${isImportMenuOpen ? styles.active : ''}`}
                 aria-haspopup="menu"
                 aria-expanded={isImportMenuOpen}
-                onClick={() => setIsImportMenuOpen((open) => !open)}
+                onClick={() => {
+                  const nextOpen = !isImportMenuOpen;
+                  setIsImportMenuOpen(nextOpen);
+                  if (nextOpen && !cloudSearchAvailable) {
+                    void refreshCloudAvailability(true);
+                  }
+                }}
               >
                 <CloudDownload size={16} />
                 <span>{t('openMidi')}</span>

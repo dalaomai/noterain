@@ -9,6 +9,7 @@ test('cloud integration remains optional and never blocks local import', async (
   const controls = await readFile(new URL('../src/components/Controls/Controls.tsx', import.meta.url), 'utf8');
 
   assert.match(api, /AbortController/);
+  assert.match(api, /controller\.abort\(\), 5_000/);
   assert.match(api, /return unavailable/);
   assert.match(api, /catch \(error\)[\s\S]*return false/);
   assert.match(api, /contentType: 'application\/octet-stream'/);
@@ -21,6 +22,8 @@ test('cloud integration remains optional and never blocks local import', async (
   assert.match(api, /if \(await isCloudScoreComplete\(hash, format\)\) return true/);
   assert.match(midiFile, /void processCloudUploadQueue|enqueueCloudUpload/);
   assert.match(controls, /cloudSearchAvailable &&/);
+  assert.match(controls, /refreshCloudAvailability\(true\)/);
+  assert.match(controls, /2_000/);
 });
 
 test('cloud file classification inspects content for every supported format', async () => {

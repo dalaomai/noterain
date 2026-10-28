@@ -17,7 +17,7 @@ export async function getCloudCapabilities(force = false): Promise<CloudCapabili
   }
   const unavailable = { available: false, upload: false, search: false, maxFileSize: 0 };
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 1_500);
+  const timeout = window.setTimeout(() => controller.abort(), 5_000);
   try {
     const response = await fetch(`${apiBase}/api/cloud/capabilities`, {
       signal: controller.signal,

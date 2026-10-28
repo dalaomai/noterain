@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { buildSync } from 'esbuild';
 
 const source = buildSync({
@@ -21,6 +22,25 @@ new Function('module', 'exports', 'require', source)(
 );
 const { getUniformScoreSpacing, getScoreTimeX, layoutScoreMeasures, getScorePageWidth, getSimplifiedDensity } =
   bundled.exports;
+
+test('MusicXML rendering avoids duplicate full-score caches and idle frame loops', async () => {
+  const parser = await readFile(new URL('../src/lib/musicxml/parser.ts', import.meta.url), 'utf8');
+  const sheet = await readFile(new URL('../src/components/MusicXmlSheet/MusicXmlSheet.tsx', import.meta.url), 'utf8');
+  const simplifiedSheet = await readFile(new URL('../src/components/SheetMusic/SheetMusic.tsx', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(parser, /renderCache/);
+  assert.match(sheet, /if \(isPlaying\) animationFrame = requestAnimationFrame\(update\)/);
+  assert.match(simplifiedSheet, /if \(isPlaying\) animationId = requestAnimationFrame\(updateHighlights\)/);
+  assert.match(parser, /workerResult\.mei/);
+});
+
+test('falling notes releases global fonts and score indexes on destroy', async () => {
+  const renderer = await readFile(new URL('../src/components/FallingNotes/FallingNotesRenderer.ts', import.meta.url), 'utf8');
+
+  assert.match(renderer, /BitmapFont\.uninstall\(BITMAP_FONT_MAIN\)/);
+  assert.match(renderer, /this\.currentFile = null/);
+  assert.match(renderer, /this\.sortedNotes = \{ notes: \[\], maxDuration: 0 \}/);
+});
 
 test('time proportional spacing reserves enough room for short notes and accidentals', () => {
   const columns = [

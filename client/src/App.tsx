@@ -1,12 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Controls } from './components/Controls/Controls';
-import { FallingNotes } from './components/FallingNotes/FallingNotes';
 import { FollowFeedback } from './components/FollowFeedback/FollowFeedback';
 import { LoadingScreen } from './components/LoadingScreen/LoadingScreen';
-import { MusicXmlSheet } from './components/MusicXmlSheet/MusicXmlSheet';
-import { NotesOverlay } from './components/NotesOverlay/NotesOverlay';
-import { SheetMusic } from './components/SheetMusic/SheetMusic';
-import { SvgPerformanceSheet } from './components/SvgPerformanceSheet/SvgPerformanceSheet';
 import { PianoKeyboard } from './components/PianoKeyboard/PianoKeyboard';
 import { PwaStatus } from './components/PwaStatus/PwaStatus';
 import { startCloudUploadQueue } from './features/cloud-scores/cloudQueue';
@@ -17,6 +12,22 @@ import { useMidiInput } from './hooks/useMidiInput';
 import { useI18n } from './hooks/useI18n';
 import { useMidiStore, calculateNoteRange } from './stores/midiStore';
 import './App.css';
+
+const FallingNotes = lazy(() => import('./components/FallingNotes/FallingNotes').then(
+  (module) => ({ default: module.FallingNotes }),
+));
+const MusicXmlSheet = lazy(() => import('./components/MusicXmlSheet/MusicXmlSheet').then(
+  (module) => ({ default: module.MusicXmlSheet }),
+));
+const NotesOverlay = lazy(() => import('./components/NotesOverlay/NotesOverlay').then(
+  (module) => ({ default: module.NotesOverlay }),
+));
+const SheetMusic = lazy(() => import('./components/SheetMusic/SheetMusic').then(
+  (module) => ({ default: module.SheetMusic }),
+));
+const SvgPerformanceSheet = lazy(() => import('./components/SvgPerformanceSheet/SvgPerformanceSheet').then(
+  (module) => ({ default: module.SvgPerformanceSheet }),
+));
 
 function App() {
   useEffect(() => startCloudUploadQueue(), []);
@@ -124,29 +135,31 @@ function App() {
       <Controls isLoadingFullVelocity={isLoadingFullVelocity} audioError={audioError} isRetryingAudio={isRetryingAudio} onRetryAudio={retryAudio} />
 
       <div className={`main-content${settings.showPianoKeyboard ? '' : ' keyboard-hidden'}${settings.showPianoKeyboard && settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
-        {settings.showNotesOverlay && <NotesOverlay />}
+        <Suspense fallback={null}>
+          {settings.showNotesOverlay && <NotesOverlay />}
 
-        {currentFile?.sourceFormat === 'svg-midi' &&
-          settings.showSheetMusic &&
-          settings.showOriginalMusicXml && (
-          <SvgPerformanceSheet key={currentFile.id} />
-        )}
+          {currentFile?.sourceFormat === 'svg-midi' &&
+            settings.showSheetMusic &&
+            settings.showOriginalMusicXml && (
+            <SvgPerformanceSheet key={currentFile.id} />
+          )}
 
-        {currentFile?.sourceFormat === 'musicxml' &&
-          settings.showSheetMusic &&
-          settings.showOriginalMusicXml && (
-          <MusicXmlSheet key={currentFile.id} />
-        )}
+          {currentFile?.sourceFormat === 'musicxml' &&
+            settings.showSheetMusic &&
+            settings.showOriginalMusicXml && (
+            <MusicXmlSheet key={currentFile.id} />
+          )}
 
-        {currentFile && settings.showSheetMusic &&
-          (currentFile.sourceFormat === 'midi' ||
-            !settings.showOriginalMusicXml) && (
-          <SheetMusic key={currentFile.id} />
-        )}
+          {currentFile && settings.showSheetMusic &&
+            (currentFile.sourceFormat === 'midi' ||
+              !settings.showOriginalMusicXml) && (
+            <SheetMusic key={currentFile.id} />
+          )}
 
-        {currentFile && settings.showFallingNotes && !settings.showSheetMusic && (
-          <FallingNotes key={currentFile.id} lookahead={3} minNote={minNote} maxNote={maxNote} />
-        )}
+          {currentFile && settings.showFallingNotes && !settings.showSheetMusic && (
+            <FallingNotes key={currentFile.id} lookahead={3} minNote={minNote} maxNote={maxNote} />
+          )}
+        </Suspense>
 
         {!currentFile && !isLoading && (
           <div className="empty-state">

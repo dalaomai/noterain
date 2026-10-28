@@ -439,7 +439,7 @@ export function MusicXmlSheet() {
         }
       }
 
-      animationFrame = requestAnimationFrame(update);
+      if (isPlaying) animationFrame = requestAnimationFrame(update);
     };
 
     animationFrame = requestAnimationFrame(update);

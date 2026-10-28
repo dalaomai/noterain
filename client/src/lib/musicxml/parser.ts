@@ -37,8 +37,6 @@ export interface MusicXmlRenderResult {
 export type MusicXmlRenderStage =
   'loadingEngine' | 'parsingScore' | 'layingOutScore' | 'renderingPages';
 
-const renderCache = new WeakMap<object, Map<string, MusicXmlRenderResult>>();
-
 type VerovioToolkitConstructor = new (module: unknown) => VerovioToolkitLike;
 
 let verovioPromise: Promise<{
@@ -137,13 +135,6 @@ export async function renderMusicXmlPages(
   onProgress?: (stage: MusicXmlRenderStage, progress: number) => void,
   signal?: AbortSignal,
 ): Promise<MusicXmlRenderResult> {
-  const cacheKey = `${pageWidth}:${density}:${expandRepeats}`;
-  const cached = renderCache.get(source)?.get(cacheKey);
-  if (cached) {
-    onProgress?.('renderingPages', 1);
-    return cached;
-  }
-
   const worker = new Worker(new URL('./render.worker.ts', import.meta.url), {
     type: 'module',
   });
@@ -214,14 +205,10 @@ export async function renderMusicXmlPages(
         ),
     );
 
-    const result = {
+    return {
       pages,
       timeMap: workerResult.timeMap,
     };
-    const sourceCache = renderCache.get(source) ?? new Map();
-    sourceCache.set(cacheKey, result);
-    renderCache.set(source, sourceCache);
-    return result;
   } finally {
     worker.terminate();
   }

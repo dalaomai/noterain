@@ -14,6 +14,8 @@
   z-index: 1;
   width: min(100%, 1200px);
   margin: 0 auto 16px;
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 1200px;
   background: var(--score-paper);
   box-shadow: 0 2px 8px var(--score-page-shadow);
   transition:

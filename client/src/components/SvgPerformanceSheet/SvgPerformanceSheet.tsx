@@ -49,11 +49,11 @@ export function SvgPerformanceSheet() {
     let frame = 0;
     const update = () => {
       setPosition(getSvgPlaybackPosition(score, useMidiStore.getState().playback.currentTime));
-      frame = requestAnimationFrame(update);
+      if (isPlaying) frame = requestAnimationFrame(update);
     };
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
-  }, [score]);
+  }, [isPlaying, score]);
 
   useEffect(() => () => {
     if (scrollAnimationRef.current !== null) {

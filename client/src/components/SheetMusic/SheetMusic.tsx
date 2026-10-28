@@ -1501,7 +1501,7 @@ export function SheetMusic({
 
     const updateHighlights = () => {
       if (!currentFile) {
-        animationId = requestAnimationFrame(updateHighlights);
+        if (isPlaying) animationId = requestAnimationFrame(updateHighlights);
         return;
       }
 
@@ -1658,7 +1658,7 @@ export function SheetMusic({
         }
       }
 
-      animationId = requestAnimationFrame(updateHighlights);
+      if (isPlaying) animationId = requestAnimationFrame(updateHighlights);
     };
 
     animationId = requestAnimationFrame(updateHighlights);
@@ -1666,7 +1666,7 @@ export function SheetMusic({
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [currentFile, getPlaybackTime, renderedLayout]);
+  }, [currentFile, getPlaybackTime, isPlaying, renderedLayout]);
 
   // Calculate loop overlay positions
   const loopOverlays = useMemo(() => {

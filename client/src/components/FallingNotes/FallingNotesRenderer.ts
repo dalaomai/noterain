@@ -361,6 +361,15 @@ export class FallingNotesRenderer {
     this.noteTexture?.destroy(true);
     this.noteTexture = null;
 
+    BitmapFont.uninstall(BITMAP_FONT_MAIN);
+    BitmapFont.uninstall(BITMAP_FONT_ACC);
+
+    this.currentFile = null;
+    this.sortedNotes = { notes: [], maxDuration: 0 };
+    this.enabledTracks.clear();
+    this.trackMap.clear();
+    this.visibleNotesSet.clear();
+
     this.fpsText = null;
     this.notesContainer = null;
     this.glowContainer = null;
@@ -466,6 +475,8 @@ export class FallingNotesRenderer {
 
   private installBitmapFonts(theme: string): void {
     const textColor = theme === 'latte' ? '#1e1e2e' : '#cdd6f4';
+    BitmapFont.uninstall(BITMAP_FONT_MAIN);
+    BitmapFont.uninstall(BITMAP_FONT_ACC);
     BitmapFont.install({
       name: BITMAP_FONT_MAIN,
       style: {

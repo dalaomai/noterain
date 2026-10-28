@@ -53,16 +53,18 @@ function getBaseUrl(velocityLayer: number): string {
 type LoadingPhase = 'loading' | 'downloading' | 'decoding' | 'done';
 
 /** Hook for audio playback using Tone.js with multi-velocity sampling */
-export function useAudioEngine() {
+export function useAudioEngine(hasScore: boolean) {
   const { settings, liveNotes } = useMidiStore();
   const fullPackCached = useOfflinePackStore((state) => state.cached === state.total);
+  const [audioRequested, setAudioRequested] = useState(false);
+  const audioActive = hasScore || audioRequested;
 
   // Map of velocity layer -> Sampler instance
   const samplersRef = useRef<Map<number, Tone.Sampler>>(new Map());
   // Track which sampler is playing each note (for proper release)
   const activeNoteSamplersRef = useRef<Map<number, number>>(new Map());
   const isLoadedRef = useRef(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const [isRetryingAudio, setIsRetryingAudio] = useState(false);
   const [audioAttempt, setAudioAttempt] = useState(0);
@@ -86,6 +88,7 @@ export function useAudioEngine() {
 
   // Initialize with only the default velocity layer for fast initial load
   useEffect(() => {
+    if (!audioActive) return;
     const samplers = new Map<number, Tone.Sampler>();
     const blobUrls = new Map<string, string>();
     const abortController = new AbortController();
@@ -95,6 +98,7 @@ export function useAudioEngine() {
     loadedCountRef.current = 0;
     isLoadedRef.current = false;
     loadedLayersRef.current = new Set();
+    setIsLoading(true);
     setDownloadProgress(0);
     setDecodeProgress(0);
     setLoadingPhase('loading');
@@ -223,7 +227,7 @@ export function useAudioEngine() {
       }
       blobUrls.clear();
     };
-  }, [audioAttempt]);
+  }, [audioActive, audioAttempt]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -519,6 +523,8 @@ export function useAudioEngine() {
     [],
   );
 
+  const requestAudio = useCallback(() => setAudioRequested(true), []);
+
   return {
     playNote,
     noteOn,
@@ -527,6 +533,8 @@ export function useAudioEngine() {
     setSustain,
     resumeAudio,
     getAudioTime,
+    requestAudio,
+    audioActive,
     isLoaded: isLoadedRef.current,
     isLoading,
     audioError,
@@ -541,3 +549,5 @@ export function useAudioEngine() {
     fullVelocityProgress,
   };
 }
+
+export type AudioEngine = ReturnType<typeof useAudioEngine>;

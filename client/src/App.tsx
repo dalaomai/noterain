@@ -32,20 +32,25 @@ const SvgPerformanceSheet = lazy(() => import('./components/SvgPerformanceSheet/
 function App() {
   useEffect(() => startCloudUploadQueue(), []);
 
-  const { noteOn, noteOff, setSustain, resumeAudio, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity, audioError, isRetryingAudio, retryAudio } = useAudioEngine();
   const { handleDrop, currentFile, loadFile } = useMidiFile();
+  const audioEngine = useAudioEngine(Boolean(currentFile));
+  const { noteOn, noteOff, setSustain, resumeAudio, requestAudio, audioActive, isLoading, loadingPhase, downloadProgress, decodeProgress, totalSamples, totalLayers, isLoadingFullVelocity, audioError, isRetryingAudio, retryAudio } = audioEngine;
   const { settings, setLiveNote, addSatisfiedWaitNote } = useMidiStore();
   const { t } = useI18n();
 
   useEffect(() => installE2EImportBridge(loadFile), [loadFile]);
 
   // Store audio functions in ref to avoid MIDI listener re-subscriptions
-  const audioRef = useRef({ noteOn, noteOff, setSustain, resumeAudio, settings, isLoading });
-  audioRef.current = { noteOn, noteOff, setSustain, resumeAudio, settings, isLoading };
+  const audioRef = useRef({ noteOn, noteOff, setSustain, resumeAudio, requestAudio, audioActive, settings, isLoading });
+  audioRef.current = { noteOn, noteOff, setSustain, resumeAudio, requestAudio, audioActive, settings, isLoading };
 
   // MIDI input callbacks - play audio when hardware MIDI notes are received
   const handleMidiNoteOn = useCallback(async (noteNumber: number, velocity: number) => {
-    const { noteOn, resumeAudio, settings, isLoading } = audioRef.current;
+    const { noteOn, resumeAudio, requestAudio, audioActive, settings, isLoading } = audioRef.current;
+    if (!audioActive) {
+      requestAudio();
+      return;
+    }
     if (isLoading) return; // Block input while loading
     if (settings.playMidiInputAudio) {
       await resumeAudio();
@@ -91,6 +96,10 @@ function App() {
   // Handle key press on virtual piano
   const handleNoteOn = useCallback(
     async (noteNumber: number) => {
+      if (!audioActive) {
+        requestAudio();
+        return;
+      }
       if (isLoading) return; // Block input while loading
       // Register before the audio promise: its latency is not playing error.
       setLiveNote(noteNumber, true);
@@ -98,7 +107,7 @@ function App() {
       await resumeAudio();
       noteOn(noteNumber, 64);
     },
-    [noteOn, resumeAudio, setLiveNote, addSatisfiedWaitNote, isLoading]
+    [noteOn, resumeAudio, requestAudio, audioActive, setLiveNote, addSatisfiedWaitNote, isLoading]
   );
 
   const handleNoteOff = useCallback(
@@ -132,7 +141,7 @@ function App() {
         />
       )}
 
-      <Controls isLoadingFullVelocity={isLoadingFullVelocity} audioError={audioError} isRetryingAudio={isRetryingAudio} onRetryAudio={retryAudio} />
+      <Controls playbackAudio={audioEngine} isLoadingFullVelocity={isLoadingFullVelocity} audioError={audioError} isRetryingAudio={isRetryingAudio} onRetryAudio={retryAudio} />
 
       <div className={`main-content${settings.showPianoKeyboard ? '' : ' keyboard-hidden'}${settings.showPianoKeyboard && settings.pinKeyboardExpanded ? ' keyboard-pinned' : ''}`}>
         <Suspense fallback={null}>

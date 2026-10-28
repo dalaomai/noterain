@@ -1,11 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useMidiStore, getMeasureTime, createSortedNotesIndex } from '../stores/midiStore';
-import { useAudioEngine } from './useAudioEngine';
+import type { AudioEngine } from './useAudioEngine';
 import { MidiNote } from '../types/midi';
 import { getPlaybackNoteIndex, schedulePlaybackAudio } from '../lib/playbackAudio';
 
 /** Hook for MIDI playback control */
-export function usePlayback() {
+export function usePlayback(
+  audioEngine: Pick<AudioEngine, 'playNote' | 'stopAll' | 'resumeAudio' | 'getAudioTime'>,
+) {
   // Use selective subscriptions to avoid re-rendering on every seek() call
   const isPlaying = useMidiStore((s) => s.playback.isPlaying);
   const currentTime = useMidiStore((s) => s.playback.currentTime);
@@ -34,7 +36,7 @@ export function usePlayback() {
   const toggleLoop = useMidiStore((s) => s.toggleLoop);
   const clearLoop = useMidiStore((s) => s.clearLoop);
 
-  const { playNote, stopAll, resumeAudio, getAudioTime } = useAudioEngine();
+  const { playNote, stopAll, resumeAudio, getAudioTime } = audioEngine;
 
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);

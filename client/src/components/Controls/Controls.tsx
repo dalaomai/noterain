@@ -29,6 +29,7 @@ import { getCloudCapabilities } from '../../features/cloud-scores/cloudApi';
 import { FloatingPlaybackRemote } from '../FloatingPlaybackRemote/FloatingPlaybackRemote';
 import { ScoreSelector } from './ScoreSelector';
 import { usePlayback } from '../../hooks/usePlayback';
+import type { AudioEngine } from '../../hooks/useAudioEngine';
 import { useMidiFile } from '../../hooks/useMidiFile';
 import { useMidiInput } from '../../hooks/useMidiInput';
 import { useOfflinePack } from '../../hooks/useOfflinePack';
@@ -46,6 +47,7 @@ import {
 import styles from './Controls.module.css';
 
 interface ControlsProps {
+  playbackAudio: Pick<AudioEngine, 'playNote' | 'stopAll' | 'resumeAudio' | 'getAudioTime'>;
   isLoadingFullVelocity: boolean;
   audioError?: boolean;
   isRetryingAudio?: boolean;
@@ -59,7 +61,7 @@ function normalizeSimplifiedDensity(value: number) {
   return Math.max(1, Math.min(10, value));
 }
 
-export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, onRetryAudio }: ControlsProps) {
+export function Controls({ playbackAudio, isLoadingFullVelocity, audioError, isRetryingAudio, onRetryAudio }: ControlsProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const importMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,7 +97,7 @@ export function Controls({ isLoadingFullVelocity, audioError, isRetryingAudio, o
     setLoopRange,
     toggleLoop,
     clearLoop,
-  } = usePlayback();
+  } = usePlayback(playbackAudio);
 
   const {
     files,

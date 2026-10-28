@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { buildSync } from 'esbuild';
+import { readFile } from 'node:fs/promises';
 
 const source = buildSync({
   entryPoints: [
@@ -20,6 +21,26 @@ new Function('module', 'exports', 'require', source)(
   createRequire(import.meta.url),
 );
 const { getPlaybackNoteIndex, schedulePlaybackAudio } = bundled.exports;
+
+test('the app shares one audio engine with playback controls', async () => {
+  const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  const playback = await readFile(new URL('../src/hooks/usePlayback.ts', import.meta.url), 'utf8');
+
+  assert.match(app, /const audioEngine = useAudioEngine\(Boolean\(currentFile\)\)/);
+  assert.match(app, /playbackAudio=\{audioEngine\}/);
+  assert.doesNotMatch(playback, /useAudioEngine\(\)/);
+});
+
+test('the full piano sample set stays dormant until a score or user audio request', async () => {
+  const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  const audio = await readFile(new URL('../src/hooks/useAudioEngine.ts', import.meta.url), 'utf8');
+
+  assert.match(audio, /const audioActive = hasScore \|\| audioRequested/);
+  assert.match(audio, /if \(!audioActive\) return/);
+  assert.match(audio, /setIsLoading\(true\)/);
+  assert.match(audio, /for \(const note of SAMPLE_NOTES\)/);
+  assert.match(app, /requestAudio\(\)/);
+});
 const note = (startTime, noteNumber = 60) => ({
   startTime, noteNumber, duration: 0.04, velocity: 64, track: 0, channel: 0,
 });
